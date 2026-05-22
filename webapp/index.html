@@ -1,837 +1,897 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Andromeda Bingo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lucy Bingo</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --orange:#f07020; --orange2:#fb923c;
+  --indigo:#2d2b6b; --indigo-soft:#4a4899;
+  --muted:#9b95c4; --bg:#c9b8e8;
+  --green:#16a34a; --green2:#22c55e;
+  --red:#e53935; --blue:#1e88e5;
+  --purple:#8e24aa; --amber:#fb8c00;
+  --dark:#2d1a4a; --white:#ffffff;
+  --shadow:0 4px 24px rgba(80,60,140,.13),0 1.5px 6px rgba(80,60,140,.07);
+}
+html,body { height:100%; width:100%; overflow:hidden; font-family:'Outfit',sans-serif; background:#b5a3d8; -webkit-tap-highlight-color:transparent; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(180deg, #1a0533 0%, #0d0221 100%);
-            min-height: 100vh;
-            padding: 12px;
-        }
+/* ══ SCREEN SYSTEM ══ */
+.screen { position:fixed; inset:0; display:flex; justify-content:center; transition:opacity .3s ease, transform .3s ease; }
+.screen.hidden     { opacity:0; pointer-events:none; transform:translateX(48px); }
+.screen.slide-away { opacity:0; pointer-events:none; transform:translateX(-48px); }
 
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-        }
+/* ══════════════════════════════════
+   SCREEN 1 — LOBBY
+══════════════════════════════════ */
+#screen-lobby { background:#b5a3d8; overflow-y:auto; overflow-x:hidden; }
+.shell {
+  width:100%; max-width:420px; min-height:100%;
+  background:var(--bg);
+  background-image:radial-gradient(ellipse at 20% 0%,rgba(255,255,255,.22) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 100%,rgba(160,130,220,.3) 0%,transparent 60%);
+  padding:22px 15px 44px;
+}
+.top-row { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-bottom:18px; animation:fadeUp .4s .05s both; }
+.top-card { background:#fff; border-radius:18px; padding:14px 15px; box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.8); display:flex; align-items:center; gap:11px; cursor:pointer; transition:transform .15s; }
+.top-card:active { transform:scale(.97); }
+.ic { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ic svg { width:21px; height:21px; }
+.ic-w { background:linear-gradient(135deg,#ffe8d0,#ffd0a0); }
+.ic-r { background:linear-gradient(135deg,#e0deff,#cfc9ff); }
+.tlbl { font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:.05em; text-transform:uppercase; }
+.tval { font-size:17px; font-weight:800; color:var(--indigo); letter-spacing:-.02em; line-height:1.2; }
+.tval.sm { font-size:14px; font-weight:700; }
+.lobby-box { background:#fff; border-radius:24px; overflow:visible; box-shadow:0 8px 40px rgba(80,60,140,.18),0 2px 8px rgba(80,60,140,.08); animation:fadeUp .4s .15s both; }
+.lhdr {
+  background:linear-gradient(90deg,#e85d10,#f07020 50%,#f58c30);
+  border-radius:22px 22px 0 0; padding:14px 14px;
+  display:grid; grid-template-columns:1fr .85fr .85fr 1.2fr .85fr;
+  align-items:center; position:relative; overflow:hidden;
+}
+.lhdr::after { content:''; position:absolute; top:-40%; right:-10%; width:170px; height:170px; background:radial-gradient(circle,rgba(255,255,255,.1) 0%,transparent 70%); border-radius:50%; pointer-events:none; }
+.hcol { font-size:11.5px; font-weight:800; color:#fff; text-align:center; letter-spacing:.02em; text-shadow:0 1px 3px rgba(0,0,0,.15); }
+.hcol:first-child { text-align:left; } .hcol:last-child { text-align:right; }
+.l-rows { padding:14px 10px 16px; display:flex; flex-direction:column; gap:16px; }
+.row-outer { position:relative; margin-top:6px; }
+.badge { position:absolute; top:-13px; left:50%; transform:translateX(-50%); background:#fff; border:1.5px solid var(--orange); border-radius:30px; padding:3px 12px; font-size:11px; font-weight:800; color:var(--orange); white-space:nowrap; z-index:10; display:flex; align-items:center; gap:5px; box-shadow:0 2px 10px rgba(240,112,32,.18); }
+.bdot { width:7px; height:7px; border-radius:50%; background:var(--orange); animation:pdot 1.4s ease-in-out infinite; }
+@keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.65)} }
+.grow { background:#fff; border-radius:16px; padding:14px 13px; display:grid; grid-template-columns:1fr .85fr .85fr 1.2fr .85fr; align-items:center; box-shadow:0 2px 14px rgba(80,60,140,.08); border:1.5px solid rgba(200,190,230,.35); transition:opacity .4s,border-color .4s; }
+.grow.dim { opacity:.82; border-color:rgba(240,112,32,.2); }
+.lstake { font-size:14px; font-weight:800; color:var(--indigo); }
+.lscell { text-align:center; } .lpcell { text-align:center; font-size:13.5px; font-weight:700; color:var(--indigo-soft); }
+.ldcell { text-align:center; font-size:12px; font-weight:700; color:var(--indigo); }
+.ldcell small { display:block; font-size:9px; font-weight:600; color:var(--muted); letter-spacing:.03em; margin-top:1px; }
+.lplaycell { display:flex; justify-content:flex-end; }
+.b-timer { font-size:13px; font-weight:800; color:var(--orange); background:rgba(240,112,32,.12); border-radius:8px; padding:3px 8px; display:inline-block; min-width:34px; text-align:center; }
+.b-timer.urg { color:#d93020; background:rgba(217,48,32,.13); animation:blink .5s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.5} }
+.b-playing { font-size:12px; font-weight:700; color:var(--muted); }
+.b-finished { font-size:12px; font-weight:700; color:var(--muted); background:rgba(155,149,196,.13); border-radius:8px; padding:3px 7px; display:inline-block; }
+.btn-play { background:linear-gradient(160deg,#ff9040,#f06018); color:#fff; border:none; border-radius:12px; padding:9px 15px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:800; cursor:pointer; box-shadow:0 4px 14px rgba(240,112,32,.38); transition:transform .12s; }
+.btn-play:active { transform:scale(.91); }
+.btn-disabled { background:rgba(180,170,210,.18); color:var(--muted); border:1.5px solid rgba(155,149,196,.22); border-radius:12px; padding:9px 11px; font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:default; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(13px)} to{opacity:1;transform:translateY(0)} }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
 
-        .header h1 {
-            color: #FF6B6B;
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+/* ══════════════════════════════════
+   SCREEN 2 — CARTELA PICKER
+══════════════════════════════════ */
+#screen-cartela { background:var(--bg); overflow:hidden; }
+.picker-shell { width:100%; max-width:430px; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 
-        .balance-card {
-            background: linear-gradient(135deg, #FF6B6B 0%, #EE5A24 100%);
-            border-radius: 16px;
-            padding: 15px 20px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
+/* header: back | wallet | stake | countdown */
+.picker-header { flex-shrink:0; padding:8px 10px 5px; display:grid; grid-template-columns:auto 1fr 1fr 1fr; gap:6px; align-items:stretch; }
+.back-btn { background:var(--white); border:none; border-radius:14px; width:42px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,.10); transition:transform .12s; }
+.back-btn:active { transform:scale(.9); }
+.hcard { background:var(--white); border-radius:14px; padding:8px 6px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.10); gap:2px; }
+.hcard .lbl { font-size:7px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.10em; line-height:1; }
+.hcard .val { font-size:13px; font-weight:900; color:var(--dark); line-height:1; font-family:'Nunito',sans-serif; }
+.wallet-val { color:#059669 !important; }
+.stake-val  { color:#7c3aed !important; }
+/* countdown card */
+.cd-card .val { color:var(--orange) !important; font-size:15px !important; }
+.cd-card .val.urg { color:#d93020 !important; animation:blink .5s ease-in-out infinite; }
 
-        .balance-label {
-            font-size: 14px;
-            color: #1a0533;
-            font-weight: bold;
-        }
+/* pool grid */
+.pool-scroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:3px 8px 4px; scrollbar-width:none; }
+.pool-scroll::-webkit-scrollbar { display:none; }
+.pool-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; }
+.pool-cell { aspect-ratio:1; border-radius:7px; background:var(--white); display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-size:clamp(6px,1.8vw,10px); font-weight:800; color:#5b4e7a; user-select:none; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.07); transition:background .18s,color .18s,transform .12s; }
+.pool-cell:active { transform:scale(.88); }
+.pool-cell.active { background:linear-gradient(135deg,var(--green),var(--green2)); color:#fff; transform:scale(1.12); z-index:2; box-shadow:0 0 0 2px rgba(34,197,94,.45),0 0 12px rgba(22,163,74,.5); animation:cell-pop .38s cubic-bezier(.36,.07,.19,.97) both; }
+.pool-cell.visited { background:#e8e0f5; color:#9b89c0; }
+@keyframes cell-pop { 0%{transform:scale(.65);opacity:.3} 55%{transform:scale(1.22)} 80%{transform:scale(1.08)} 100%{transform:scale(1.12);opacity:1} }
 
-        .balance-amount {
-            font-size: 28px;
-            font-weight: bold;
-            color: #1a0533;
-        }
+/* picker bottom — preview area */
+.picker-bottom { flex-shrink:0; padding:3px 8px 8px; display:flex; flex-direction:column; }
+.preview-area { background:var(--white); border-radius:14px; padding:5px 7px 6px; box-shadow:0 -2px 14px rgba(0,0,0,.10),0 3px 10px rgba(0,0,0,.08); min-height:108px; display:flex; flex-direction:column; gap:3px; }
+.preview-top-row { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.preview-label { font-size:9px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+.preview-sel-badge { font-size:10px; font-weight:900; color:var(--orange); background:rgba(240,112,32,.1); border-radius:20px; padding:2px 8px; }
+.preview-body { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; }
 
-        .refresh-btn {
-            background: rgba(26, 5, 51, 0.3);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            color: #1a0533;
-            font-weight: bold;
-            cursor: pointer;
-        }
+/* idle */
+.idle-block { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.idle-icon { font-size:22px; }
+.idle-txt { font-size:9px; font-weight:800; color:var(--muted); text-align:center; line-height:1.4; }
 
-        .rooms-table {
-            background: white;
-            border-radius: 16px;
-            overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
+/* mini cartela card */
+.mini-card { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mini-card-title { text-align:center; font-size:8px; font-weight:900; color:var(--dark); }
+.mini-card-title em { color:var(--orange); font-style:normal; }
+.mini-hdr { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; }
+.mh { border-radius:3px; text-align:center; font-size:8px; font-weight:900; color:#fff; padding:1px 0; }
+.mh.B{background:var(--red)} .mh.I{background:var(--amber)} .mh.N{background:var(--green)} .mh.G{background:var(--blue)} .mh.O{background:var(--purple)}
+.mini-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:1px; flex:1; }
+.mc { border-radius:3px; background:#ede8fd; display:flex; align-items:center; justify-content:center; font-family:'Nunito',sans-serif; font-size:clamp(5px,1.5vw,9px); font-weight:800; color:var(--dark); aspect-ratio:1; }
+.mc.free { background:linear-gradient(135deg,var(--green),var(--green2)); color:#fff; }
 
-        .table-header {
-            background: #FF6B6B;
-            display: grid;
-            grid-template-columns: 1fr 0.8fr 0.8fr 1fr 0.8fr;
-            padding: 12px;
-            font-weight: bold;
-            color: #1a0533;
-            font-size: 12px;
-            text-align: center;
-        }
 
-        .table-row {
-            display: grid;
-            grid-template-columns: 1fr 0.8fr 0.8fr 1fr 0.8fr;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            text-align: center;
-            align-items: center;
-        }
+/* ══════════════════════════════════
+   SCREEN 3 — BINGO GAME
+══════════════════════════════════ */
+#screen-bingo { background:#cfc7f0; overflow-y:auto; overflow-x:hidden; }
+.bingo-shell { width:100%; max-width:480px; min-height:100%; background:#b4a7df; padding:10px 8px 18px; display:flex; flex-direction:column; gap:8px; }
 
-        .play-btn {
-            background: linear-gradient(135deg, #FF6B6B, #EE5A24);
-            border: none;
-            padding: 6px 12px;
-            border-radius: 20px;
-            color: #1a0533;
-            font-weight: bold;
-            cursor: pointer;
-        }
+/* status bar */
+.status-bar { display:flex; align-items:center; gap:5px; }
+.stat-box { flex:1; background:#fff; border:1.5px solid #9b7fd4; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:5px 2px; min-width:0; }
+.stat-label { font-size:9px; font-weight:700; color:#7c4dbb; text-transform:uppercase; letter-spacing:.3px; line-height:1.2; }
+.stat-value { font-size:15px; font-weight:800; color:#222; line-height:1.2; font-family:'Nunito',sans-serif; }
+.sound-btn { width:36px; height:36px; min-width:36px; border-radius:50%; background:#7c4dbb; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(124,77,187,.35); transition:transform .15s,background .2s; }
+.sound-btn:hover { background:#5e3498; transform:scale(1.08); }
+.sound-btn.muted { background:#aaa; }
 
-        .selection-page, .game-page {
-            display: none;
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
+/* main area */
+.bingo-main { display:flex; gap:8px; align-items:flex-start; }
 
-        .selection-title {
-            text-align: center;
-            font-size: 20px;
-            font-weight: bold;
-            color: #1a0533;
-            margin-bottom: 20px;
-        }
+/* number board */
+.number-board { background:rgba(255,255,255,.12); border-radius:14px; padding:7px 5px; flex-shrink:0; width:148px; }
+.board-header { display:grid; grid-template-columns:repeat(5,1fr); gap:2px; margin-bottom:4px; }
+.col-hdr { border-radius:6px; text-align:center; font-weight:900; font-size:13px; color:#fff; padding:3px 0; }
+.col-hdr.b{background:#e8a020} .col-hdr.i{background:#2eaa5e} .col-hdr.n{background:#2871c9} .col-hdr.g{background:#c0302a} .col-hdr.o{background:#7c4dbb}
+.board-grid { display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(15,1fr); grid-auto-flow:column; gap:2px; }
+.board-cell { width:100%; aspect-ratio:1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:rgba(255,255,255,.85); background:rgba(255,255,255,.18); cursor:default; transition:background .3s,color .3s,transform .25s,font-size .2s; user-select:none; }
+.board-cell.called-current { background:#8B1A1A; color:#fff; box-shadow:0 0 10px rgba(139,26,26,.8); transform:scale(1.22); font-size:12px; z-index:2; position:relative; }
+.board-cell.called-prev  { background:rgba(180,180,180,.55); color:#555; }
+.board-cell.called-match { background:#2eaa5e; color:#fff; box-shadow:0 0 8px rgba(46,170,94,.6); }
 
-        .cartela-input {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+/* right panel */
+.right-panel { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
 
-        .cartela-input input {
-            width: 150px;
-            padding: 15px;
-            font-size: 24px;
-            text-align: center;
-            border: 2px solid #FF6B6B;
-            border-radius: 12px;
-            font-weight: bold;
-        }
+/* current call */
+.current-call-box { background:#6a3db8; border-radius:14px; display:flex; align-items:center; justify-content:space-between; padding:8px 10px 8px 14px; position:relative; min-height:70px; overflow:visible; flex-shrink:0; }
+.current-call-left { display:flex; flex-direction:column; gap:2px; }
+.current-call-label { color:#fff; font-size:14px; font-weight:700; letter-spacing:.5px; }
+.countdown-wrap { display:flex; align-items:center; gap:5px; margin-top:4px; }
+.countdown-bar-bg { width:90px; height:6px; background:rgba(255,255,255,.2); border-radius:3px; overflow:hidden; }
+.countdown-bar-fill { height:100%; width:100%; background:#ffb347; border-radius:3px; transition:width 1s linear,background .5s; }
+.countdown-bar-fill.urgent { background:#ff4444; }
+.countdown-num { color:#fff; font-size:11px; font-weight:800; min-width:16px; text-align:right; opacity:.85; }
+.call-ball { width:62px; height:62px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#ffb347,#e07b00 60%,#b85c00); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(200,100,0,.55),inset 0 -4px 8px rgba(0,0,0,.25),inset 0 4px 8px rgba(255,220,120,.45); position:absolute; right:-4px; top:50%; transform:translateY(-50%); z-index:10; }
+.call-ball.pop { animation:ballPop .45s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes ballPop { 0%{transform:translateY(-50%) scale(.55);opacity:.5} 65%{transform:translateY(-50%) scale(1.18)} 100%{transform:translateY(-50%) scale(1);opacity:1} }
+#call-ball-text { color:#fff; font-size:15px; font-weight:900; text-shadow:0 1px 4px rgba(0,0,0,.4); letter-spacing:-.5px; }
 
-        .random-btn {
-            background: #f0f0f0;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
-            margin: 10px;
-            cursor: pointer;
-        }
+/* game cartelas — stacked, no tabs */
+.game-cartelas-stack { display:flex; flex-direction:column; gap:8px; }
+.game-cartela-wrap { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 3px 14px rgba(80,40,160,.14); }
+.game-cartela-title { text-align:center; font-size:12px; font-weight:600; color:#888; padding:5px 0 3px; background:#fafafa; }
+.game-cartela-title em { color:var(--orange); font-style:normal; }
+.game-cartela-hdr { display:grid; grid-template-columns:repeat(5,1fr); }
+.gc-col { text-align:center; font-weight:900; font-size:13px; color:#fff; padding:5px 0; }
+.gc-col.b{background:#e8a020} .gc-col.i{background:#2eaa5e} .gc-col.n{background:#2871c9} .gc-col.g{background:#c0302a} .gc-col.o{background:#7c4dbb}
+.game-cartela-grid { display:grid; grid-template-columns:repeat(5,1fr); }
+.gc-cell { display:flex; align-items:center; justify-content:center; aspect-ratio:1; font-size:14px; font-weight:700; color:#1a1a1a; background:#fff; border:.5px solid #eaeaea; cursor:pointer; transition:background .25s,color .25s,transform .2s; user-select:none; }
+.gc-cell:active { transform:scale(.92); }
+.gc-cell.free   { background:#2eaa5e; color:#fff; font-size:18px; cursor:default; }
+.gc-cell.matched{ background:#2eaa5e; color:#fff; animation:matchFlash .5s ease; }
+.gc-cell.manually-marked { background:#a78bfa; color:#fff; }
+@keyframes matchFlash { 0%{background:#fff;transform:scale(1)} 40%{background:#a8edbe;transform:scale(1.12)} 100%{background:#2eaa5e;transform:scale(1)} }
 
-        .quantity-selector {
-            text-align: center;
-            margin: 15px 0;
-            padding: 15px;
-            background: #f5f5f5;
-            border-radius: 12px;
-        }
+/* footer */
+.bingo-footer { display:flex; flex-direction:column; align-items:center; gap:8px; padding:0 2px; }
+.bingo-btn { width:100%; padding:15px 0; border:none; border-radius:14px; background:#e8b89a; color:#fff; font-size:20px; font-weight:900; letter-spacing:3px; cursor:pointer; box-shadow:0 3px 12px rgba(200,120,80,.28); transition:background .2s,transform .15s; }
+.bingo-btn:hover { background:#d9956e; transform:translateY(-1px); }
+.bingo-btn.winner { background:linear-gradient(135deg,#f7b733,#fc4a1a); animation:winnerPulse .7s infinite alternate; }
+@keyframes winnerPulse { from{box-shadow:0 0 12px rgba(247,183,51,.5)} to{box-shadow:0 0 32px rgba(252,74,26,.8)} }
+.leave-link { font-size:14px; color:#5a3a9a; text-decoration:underline; cursor:pointer; font-weight:500; }
 
-        .quantity-selector button {
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            border-radius: 50%;
-            border: none;
-            background: #FF6B6B;
-            cursor: pointer;
-        }
+/* win overlay */
+.win-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:999; align-items:center; justify-content:center; }
+.win-overlay.active { display:flex; }
+.win-box { background:#fff; border-radius:22px; padding:36px 40px; text-align:center; box-shadow:0 12px 48px rgba(0,0,0,.35); animation:winBoxIn .4s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes winBoxIn { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+.win-box h2 { font-size:36px; font-weight:900; color:#e07b00; margin-bottom:10px; }
+.win-box p  { font-size:15px; color:#555; margin-bottom:20px; }
+.win-close  { background:#6a3db8; color:#fff; border:none; border-radius:10px; padding:10px 28px; font-size:15px; font-weight:700; cursor:pointer; }
 
-        .available-numbers {
-            background: #f5f5f5;
-            border-radius: 12px;
-            padding: 15px;
-            margin: 15px 0;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .number-badge {
-            display: inline-block;
-            width: 45px;
-            padding: 8px;
-            margin: 4px;
-            background: white;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .number-badge.taken {
-            background: #ddd;
-            color: #999;
-            text-decoration: line-through;
-            cursor: not-allowed;
-        }
-
-        .number-badge.selected {
-            background: #FF6B6B;
-            color: white;
-        }
-
-        .confirm-btn, .cancel-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 25px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-        }
-
-        .confirm-btn {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
-        }
-
-        .cancel-btn {
-            background: #f44336;
-            color: white;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .game-number {
-            font-size: 48px;
-            font-weight: bold;
-            color: #FF6B6B;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        .game-info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            gap: 10px;
-        }
-
-        .info-card {
-            flex: 1;
-            background: #f5f5f5;
-            border-radius: 12px;
-            padding: 12px;
-            text-align: center;
-        }
-
-        .info-card .value {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .number-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 4px;
-            margin-bottom: 20px;
-            background: #f0f0f0;
-            padding: 8px;
-            border-radius: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .number-cell {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .number-cell.drawn {
-            background: #FF6B6B;
-            color: white;
-        }
-
-        .bingo-card {
-            background: #f5f5f5;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-
-        .card-title {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #1a0533;
-        }
-
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-        }
-
-        .card-cell {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .card-cell.marked {
-            background: #FF6B6B;
-            color: white;
-            transform: scale(0.95);
-        }
-
-        .card-cell.free {
-            background: #FF6B6B;
-            color: white;
-        }
-
-        .number-popup {
-            position: fixed;
-            top: 20%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #FF6B6B, #EE5A24);
-            color: white;
-            font-size: 80px;
-            font-weight: bold;
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            animation: popupAnimation 0.8s ease-out forwards;
-        }
-
-        @keyframes popupAnimation {
-            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-            50% { transform: translate(-50%, -50%) scale(1.2); }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-        }
-
-        .winner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .winner-card {
-            background: linear-gradient(135deg, #FF6B6B, #EE5A24);
-            border-radius: 24px;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .winner-card .amount {
-            font-size: 36px;
-            font-weight: bold;
-            margin: 15px 0;
-        }
-
-        .cartela-tab {
-            display: inline-block;
-            padding: 5px 10px;
-            margin: 2px;
-            background: #ddd;
-            border-radius: 15px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-
-        .cartela-tab.active {
-            background: #FF6B6B;
-            color: white;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 16px;
-            color: rgba(255,255,255,0.7);
-            font-size: 12px;
-        }
-
-        .error {
-            color: #f44336;
-            text-align: center;
-            padding: 10px;
-        }
-    </style>
+@media (max-width:360px) {
+  .number-board { width:130px; }
+  .board-cell { font-size:9px; }
+  .gc-cell { font-size:12px; }
+  .stat-value { font-size:13px; }
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <!-- Main Menu -->
-        <div id="mainMenu">
-            <div class="header"><h1>ANDROMEDA BINGO</h1></div>
-            <div class="balance-card">
-                <div><div class="balance-label">Balance</div><div class="balance-amount" id="balance">0 ETB</div></div>
-                <button class="refresh-btn" id="refreshBalance">Refresh</button>
-            </div>
-            <button id="dailyBonusBtn" style="width:100%; padding:12px; margin-bottom:15px; background:linear-gradient(135deg,#4CAF50,#45a049); border:none; border-radius:12px; color:white; font-weight:bold; cursor:pointer;">
-                🎁 Claim Daily Bonus (50 ETB)
-            </button>
-            <div class="rooms-table">
-                <div class="table-header">
-                    <div>Stake</div><div>Active</div><div>Players</div><div>Derash</div><div>Play</div>
-                </div>
-                <div id="roomsList">Loading...</div>
-            </div>
-            <div class="footer">© Andromeda Bingo 2026 | 80% to Winner</div>
-        </div>
 
-        <!-- Cartela Selection -->
-        <div id="selectionPage" class="selection-page">
-            <div class="selection-title">🎫 Choose Cartela #1 🎫</div>
-            <div class="cartela-input">
-                <input type="number" id="cartelaInput" placeholder="Enter 1-500" min="1" max="500">
-                <br><button class="random-btn" id="randomCartelaBtn">🎲 Random Lucky Number</button>
-            </div>
-            <div class="quantity-selector">
-                <div style="margin-bottom: 8px;">🎫 Number of Cartelas (Max 10)</div>
-                <div style="display: flex; justify-content: center; gap: 15px; align-items: center;">
-                    <button id="decreaseQty">-</button>
-                    <span id="cartelaQuantity" style="font-size: 28px; font-weight: bold; min-width: 60px;">1</span>
-                    <button id="increaseQty">+</button>
-                </div>
-                <div style="margin-top: 8px; font-size: 14px; font-weight: bold;">Total: <span id="totalCost">10</span> ETB</div>
-            </div>
-            <div class="available-numbers"><div id="availableNumbersList"></div></div>
-            <div id="selectionError" class="error"></div>
-            <div class="action-buttons">
-                <button class="cancel-btn" id="cancelSelection">Cancel</button>
-                <button class="confirm-btn" id="confirmSelection">Confirm & Play</button>
-            </div>
-        </div>
+<!-- ══════════════════════════
+   SCREEN 1 — LOBBY
+══════════════════════════ -->
+<div id="screen-lobby" class="screen">
+<div class="shell">
+  <div class="top-row">
+    <div class="top-card">
+      <div class="ic ic-w">
+        <svg viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="6" width="20" height="14" rx="3" fill="#f07020" opacity="0.12"/>
+          <rect x="2" y="6" width="20" height="14" rx="3" stroke="#f07020" stroke-width="1.8"/>
+          <circle cx="17" cy="13" r="1.2" fill="#f07020"/>
+          <path d="M2 10h20" stroke="#f07020" stroke-width="1.8"/>
+          <path d="M6 6V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" stroke="#f07020" stroke-width="1.8"/>
+        </svg>
+      </div>
+      <div>
+        <div class="tlbl">Balance</div>
+        <div class="tval" id="bal">385 ETB</div>
+      </div>
+    </div>
+    <div class="top-card" onclick="doRefresh()">
+      <div class="ic ic-r">
+        <svg id="ri" viewBox="0 0 24 24" fill="none">
+          <path d="M4 12a8 8 0 0 1 13.66-5.66L20 9" stroke="#6c63d4" stroke-width="2" stroke-linecap="round"/>
+          <path d="M20 4v5h-5" stroke="#6c63d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 12a8 8 0 0 1-13.66 5.66L4 15" stroke="#6c63d4" stroke-width="2" stroke-linecap="round"/>
+          <path d="M4 20v-5h5" stroke="#6c63d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="tlbl">Update</div>
+        <div class="tval sm">Refresh</div>
+      </div>
+    </div>
+  </div>
+  <div class="lobby-box">
+    <div class="lhdr">
+      <div class="hcol">Stake</div>
+      <div class="hcol">Active</div>
+      <div class="hcol">Players</div>
+      <div class="hcol">Derash</div>
+      <div class="hcol">Play</div>
+    </div>
+    <div class="l-rows" id="l-rows"></div>
+  </div>
+</div>
+</div>
 
-        <!-- Game Page -->
-        <div id="gamePage" class="game-page">
-            <div class="game-number" id="gameNumber">13</div>
-            <div class="game-info-row">
-                <div class="info-card"><div>💰 Wallet</div><div class="value" id="gameBalance">0 ETB</div></div>
-                <div class="info-card"><div>🎲 Stake</div><div class="value" id="stakeAmount">10 ETB</div></div>
-                <div class="info-card"><div>🏆 Prize Pool</div><div class="value" id="prizePool">0 ETB</div></div>
-            </div>
-            <div class="number-grid" id="numberGrid"></div>
-            <div class="cartela-selector" id="cartelaSelector"></div>
-            <div class="bingo-card">
-                <div class="card-title">Cartela #<span id="cartelaNumber">378</span></div>
-                <div class="card-grid" id="bingoGrid"></div>
-            </div>
-            <button class="play-btn" id="backToMenu" style="width:100%; margin-top:10px;">← Exit Game</button>
+
+<!-- ══════════════════════════
+   SCREEN 2 — CARTELA PICKER
+══════════════════════════ -->
+<div id="screen-cartela" class="screen hidden">
+<div class="picker-shell">
+
+  <!-- header: back | wallet | stake | countdown -->
+  <div class="picker-header">
+    <button class="back-btn" onclick="pickerBack()">
+      <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+        <path d="M15 18l-6-6 6-6" stroke="#2d2b6b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="hcard">
+      <div class="lbl">Wallet</div>
+      <div class="val wallet-val" id="p-wallet">385 ETB</div>
+    </div>
+    <div class="hcard">
+      <div class="lbl">Stake</div>
+      <div class="val stake-val" id="p-stake">— ETB</div>
+    </div>
+    <!-- countdown card — game auto-starts at 0 -->
+    <div class="hcard cd-card">
+      <div class="lbl">Starts in</div>
+      <div class="val" id="p-cd-val">20s</div>
+    </div>
+  </div>
+
+  <!-- pool 1–400 -->
+  <div class="pool-scroll">
+    <div class="pool-grid" id="pool-grid"></div>
+  </div>
+
+  <!-- preview area — NO confirm button -->
+  <div class="picker-bottom">
+    <div class="preview-area">
+      <div class="preview-top-row">
+        <span class="preview-label">Cartela Preview</span>
+        <span class="preview-sel-badge" id="p-sel-badge">0 / 2 selected</span>
+      </div>
+      <div class="preview-body" id="preview-body">
+        <!-- filled dynamically -->
+        <div class="idle-block">
+          <div class="idle-icon">🎯</div>
+          <div class="idle-txt">Kutr ይምረጡ · Cartela ይታያል</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════
+   SCREEN 3 — BINGO GAME
+══════════════════════════ -->
+<div id="screen-bingo" class="screen hidden">
+<div class="bingo-shell">
+
+  <!-- status bar -->
+  <div class="status-bar">
+    <div class="stat-box"><span class="stat-label">Bet</span><span class="stat-value" id="gs-bet">—</span></div>
+    <div class="stat-box"><span class="stat-label">Derash</span><span class="stat-value" id="gs-derash">—</span></div>
+    <div class="stat-box"><span class="stat-label">Players</span><span class="stat-value" id="gs-players">—</span></div>
+    <div class="stat-box"><span class="stat-label">Call</span><span class="stat-value" id="gs-call">0</span></div>
+    <button class="sound-btn" id="sound-btn">
+      <svg viewBox="0 0 24 24" fill="white" width="20" height="20">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- main: board (left) + right panel -->
+  <div class="bingo-main">
+
+    <!-- number board 1–75 -->
+    <div class="number-board">
+      <div class="board-header">
+        <div class="col-hdr b">B</div><div class="col-hdr i">I</div>
+        <div class="col-hdr n">N</div><div class="col-hdr g">G</div><div class="col-hdr o">O</div>
+      </div>
+      <div class="board-grid" id="board-grid"></div>
     </div>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+    <!-- right panel -->
+    <div class="right-panel">
 
-        let currentUser = null;
-        let currentGame = null;
-        let currentCartelas = [];
-        let activeCartelaIndex = 0;
-        let selectedStake = null;
-        let selectedCartelaNumber = null;
-        let cartelaQuantity = 1;
-        let pollingInterval = null;
-        let availableCartelas = [];
-        let lastNumberCount = 0;
-        const maxCartelas = 10;
+      <!-- current call box -->
+      <div class="current-call-box">
+        <div class="current-call-left">
+          <span class="current-call-label">Current Call</span>
+          <div class="countdown-wrap">
+            <div class="countdown-bar-bg"><div class="countdown-bar-fill" id="g-cd-fill"></div></div>
+            <span class="countdown-num" id="g-cd-num">5</span>
+          </div>
+        </div>
+        <div class="call-ball" id="call-ball"><span id="call-ball-text">—</span></div>
+      </div>
 
-        async function init() {
-            if (tg.initDataUnsafe?.user) {
-                currentUser = tg.initDataUnsafe.user;
-            } else {
-                currentUser = { id: Math.floor(Math.random() * 1000000), first_name: 'Player' };
-            }
-            
-            document.getElementById('mainMenu').style.display = 'block';
-            document.getElementById('selectionPage').style.display = 'none';
-            document.getElementById('gamePage').style.display = 'none';
-            
-            await loadGameRooms();
-            await updateBalance();
+      <!-- cartelas stacked (no tabs) -->
+      <div class="game-cartelas-stack" id="game-cartelas-stack"></div>
+
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div class="bingo-footer">
+    <button class="bingo-btn" id="bingo-btn">BINGO!</button>
+    <span class="leave-link" onclick="leaveGame()">Leave Game</span>
+  </div>
+
+</div>
+</div>
+
+
+<!-- WIN OVERLAY -->
+<div class="win-overlay" id="win-overlay">
+  <div class="win-box">
+    <h2>🎉 BINGO!</h2>
+    <p>Congratulations! You won!</p>
+    <button class="win-close" id="win-close">Back to Lobby</button>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════
+   SHARED STATE
+═══════════════════════════════════════ */
+let appBalance  = 385;
+let appStake    = 0;
+let appPlayers  = 0;
+let appDerash   = 0;
+let appGameId   = '';
+
+/* ═══════════════════════════════════════
+   SCREEN NAVIGATION
+═══════════════════════════════════════ */
+function showScreen(nextId) {
+  const cur = document.querySelector('.screen:not(.hidden):not(.slide-away)');
+  if (cur && cur.id !== nextId) cur.classList.add('slide-away');
+  setTimeout(() => {
+    document.querySelectorAll('.screen').forEach(s => {
+      s.classList.remove('slide-away');
+      s.classList.toggle('hidden', s.id !== nextId);
+    });
+  }, 300);
+}
+
+/* ═══════════════════════════════════════
+   CARTELA ENGINE
+═══════════════════════════════════════ */
+function seededRng(seed) {
+  let s = (seed ^ 0xdeadbeef) >>> 0;
+  return () => {
+    s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) | 0;
+    s = Math.imul(s ^ (s >>> 12), 0x297a2153) | 0;
+    s = (s ^ (s >>> 13)) >>> 0;
+    return s / 0x100000000;
+  };
+}
+function shuffleWith(arr, rng) {
+  const a = arr.slice();
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function generateCartela(id) {
+  const rng = seededRng(id * 0x9e3779b9 + 0x6b43a9c5);
+  const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+  const cols = ranges.map(([lo,hi]) => {
+    const pool=[]; for(let n=lo;n<=hi;n++) pool.push(n);
+    return shuffleWith(pool,rng).slice(0,5);
+  });
+  const grid=[];
+  for(let r=0;r<5;r++) grid.push(cols.map(c=>c[r]));
+  grid[2][2]='FREE';
+  return grid;
+}
+function getColLetter(n) {
+  if(n<=15) return 'B'; if(n<=30) return 'I'; if(n<=45) return 'N'; if(n<=60) return 'G'; return 'O';
+}
+
+
+/* ═══════════════════════════════════════
+   LOBBY LOGIC
+═══════════════════════════════════════ */
+const LOBBY_CD=20, PLAYING_CD=30;
+const games = [
+  { id:'g10', stake:10,  players:140, state:'lobby',   cd:18 },
+  { id:'g20', stake:20,  players:102, state:'lobby',   cd:11 },
+  { id:'g50', stake:50,  players:90,  state:'playing', cd:22 },
+];
+const fmtNum = n => Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+const derashOf = g => g.players * g.stake;
+
+function renderLobby() {
+  const wrap = document.getElementById('l-rows');
+  wrap.innerHTML='';
+  games.forEach(g => {
+    const isL=g.state==='lobby', isP=g.state==='playing', isF=g.state==='finished';
+    let statusHTML;
+    if(isL) statusHTML=`<span class="b-timer${g.cd<=5?' urg':''}" id="ltm-${g.id}">${g.cd}s</span>`;
+    else if(isP) statusHTML=`<span class="b-playing">playing</span>`;
+    else statusHTML=`<span class="b-finished">Finished</span>`;
+    const btnHTML = isL
+      ? `<button class="btn-play" onclick="joinGame('${g.id}')">Play</button>`
+      : `<button class="btn-disabled">Playing</button>`;
+    const outer=document.createElement('div');
+    outer.className='row-outer'; outer.id='lo-'+g.id;
+    outer.innerHTML=`
+      <div class="badge"><span class="bdot"></span>Active game</div>
+      <div class="grow${(isP||isF)?' dim':''}" id="lgrow-${g.id}">
+        <div class="lstake">${g.stake} ETB</div>
+        <div class="lscell">${statusHTML}</div>
+        <div class="lpcell" id="lpc-${g.id}">${fmtNum(g.players)}</div>
+        <div class="ldcell" id="ldc-${g.id}">${fmtNum(derashOf(g))} ETB<small>Prize Pool</small></div>
+        <div class="lplaycell">${btnHTML}</div>
+      </div>`;
+    wrap.appendChild(outer);
+  });
+}
+function patchLobbyTimer(g) {
+  const el=document.getElementById('ltm-'+g.id); if(!el) return;
+  el.textContent=g.cd+'s';
+  if(g.cd<=5) el.classList.add('urg'); else el.classList.remove('urg');
+}
+function patchLobbyNumbers(g) {
+  const pc=document.getElementById('lpc-'+g.id), dc=document.getElementById('ldc-'+g.id);
+  if(pc) pc.textContent=fmtNum(g.players);
+  if(dc) dc.innerHTML=fmtNum(derashOf(g))+' ETB<small>Prize Pool</small>';
+}
+function lobbyTick() {
+  let needRender=false;
+  games.forEach(g => {
+    g.cd=Math.max(0,g.cd-1);
+    if(g.state==='lobby') {
+      if(g.cd>0) { const j=Math.floor(Math.random()*5); if(j>0){g.players+=j;patchLobbyNumbers(g);} patchLobbyTimer(g); }
+      else { g.state='playing'; g.cd=PLAYING_CD; needRender=true; }
+    } else if(g.state==='playing') {
+      if(g.cd<=0) { g.state='finished'; g.cd=1; needRender=true; }
+    } else if(g.state==='finished') {
+      if(g.cd<=0) { g.state='lobby'; g.cd=LOBBY_CD; g.players=60+Math.floor(Math.random()*90); needRender=true; }
+      else g.cd--;
+    }
+  });
+  if(needRender) renderLobby();
+}
+function joinGame(id) {
+  const g=games.find(x=>x.id===id);
+  if(!g||g.state!=='lobby') return;
+  appGameId=id; appStake=g.stake; appPlayers=g.players; appDerash=derashOf(g);
+  g.state='playing'; g.cd=PLAYING_CD;
+  renderLobby();
+  openPicker();
+}
+function doRefresh() {
+  const icon=document.getElementById('ri');
+  icon.style.transition='transform .6s ease'; icon.style.transform='rotate(360deg)';
+  setTimeout(()=>{icon.style.transition='none'; icon.style.transform='rotate(0deg)';},680);
+  games.forEach(g=>{ if(g.state==='lobby'){g.players+=Math.floor(Math.random()*8)+2;patchLobbyNumbers(g);} });
+}
+
+
+/* ═══════════════════════════════════════
+   CARTELA PICKER LOGIC
+═══════════════════════════════════════ */
+let pickerSelectedIds = [];
+let pickerTimer       = null;
+let pickerCd          = LOBBY_CD;
+
+function openPicker() {
+  document.getElementById('p-wallet').textContent = appBalance+' ETB';
+  document.getElementById('p-stake').textContent  = appStake+' ETB';
+  resetPicker();
+  startPickerCountdown();
+  showScreen('screen-cartela');
+}
+
+function resetPicker() {
+  pickerSelectedIds=[];
+  document.querySelectorAll('.pool-cell').forEach(c=>c.classList.remove('active','visited'));
+  renderPreview();
+}
+
+/* ── countdown: auto-starts game at 0 ── */
+function startPickerCountdown() {
+  clearInterval(pickerTimer);
+  pickerCd = LOBBY_CD;
+  updatePickerCdDisplay();
+  pickerTimer = setInterval(()=>{
+    pickerCd--;
+    updatePickerCdDisplay();
+    if(pickerCd<=0) { clearInterval(pickerTimer); goGame(); }
+  },1000);
+}
+function stopPickerCountdown() { clearInterval(pickerTimer); pickerTimer=null; }
+function updatePickerCdDisplay() {
+  const el=document.getElementById('p-cd-val'); if(!el) return;
+  el.textContent=Math.max(0,pickerCd)+'s';
+  if(pickerCd<=5) el.classList.add('urg'); else el.classList.remove('urg');
+}
+
+function pickerBack() {
+  stopPickerCountdown();
+  const g=games.find(x=>x.id===appGameId);
+  if(g && g.state==='playing') { g.state='lobby'; g.cd=LOBBY_CD; renderLobby(); }
+  showScreen('screen-lobby');
+}
+
+/* ── build pool grid once ── */
+function buildPoolGrid() {
+  const grid=document.getElementById('pool-grid');
+  const frag=document.createDocumentFragment();
+  for(let n=1;n<=400;n++) {
+    const cell=document.createElement('div');
+    cell.className='pool-cell'; cell.textContent=n; cell.id='pp-'+n;
+    cell.addEventListener('click',()=>onPickerSelect(n));
+    frag.appendChild(cell);
+  }
+  grid.appendChild(frag);
+}
+
+function onPickerSelect(id) {
+  if(pickerSelectedIds.includes(id)) {
+    // deselect
+    pickerSelectedIds=pickerSelectedIds.filter(x=>x!==id);
+    document.getElementById('pp-'+id).classList.remove('active');
+  } else {
+    if(pickerSelectedIds.length>=2) return;
+    pickerSelectedIds.push(id);
+    const cell=document.getElementById('pp-'+id);
+    if(cell){ cell.classList.add('active'); cell.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+  }
+  renderPreview();
+}
+
+/* ── preview: idle / 1 cartela / 2 cartelas side-by-side ── */
+function renderPreview() {
+  const body=document.getElementById('preview-body');
+  const badge=document.getElementById('p-sel-badge');
+  badge.textContent=pickerSelectedIds.length+' / 2 selected';
+  body.innerHTML='';
+
+  if(pickerSelectedIds.length===0) {
+    body.innerHTML=`
+      <div class="idle-block">
+        <div class="idle-icon">🎯</div>
+        <div class="idle-txt">Kutr ይምረጡ · Cartela ይታያል</div>
+      </div>`;
+    return;
+  }
+  // Show 1 or 2 cartelas side by side
+  pickerSelectedIds.forEach(id=>{
+    const grid=generateCartela(id);
+    const card=document.createElement('div');
+    card.className='mini-card';
+    card.innerHTML=`
+      <div class="mini-card-title">Cartela #<em>${id}</em></div>
+      <div class="mini-hdr">
+        <div class="mh B">B</div><div class="mh I">I</div>
+        <div class="mh N">N</div><div class="mh G">G</div><div class="mh O">O</div>
+      </div>
+      <div class="mini-grid">
+        ${grid.flat().map(v=>
+          v==='FREE'
+            ? `<div class="mc free">★</div>`
+            : `<div class="mc">${v}</div>`
+        ).join('')}
+      </div>`;
+    body.appendChild(card);
+  });
+}
+
+
+/* ═══════════════════════════════════════
+   BINGO GAME
+═══════════════════════════════════════ */
+const CALL_INTERVAL_SEC = 5;
+let gameCartelaData     = [];
+let gameCallCount       = 0;
+let gameNumberPool      = [];
+let gameInterval        = null;
+let gameCountdownTimer  = null;
+let gameSecondsLeft     = CALL_INTERVAL_SEC;
+let gameOver            = false;
+let soundEnabled        = true;
+let audioCtx            = null;
+
+function goGame() {
+  stopPickerCountdown();
+  // If nothing selected, auto-pick a random cartela
+  if(pickerSelectedIds.length===0) {
+    pickerSelectedIds=[Math.floor(Math.random()*400)+1];
+  }
+  gameCartelaData = pickerSelectedIds.map(id=>({
+    id, grid:generateCartela(id), matched:new Set(), manualDesel:new Set()
+  }));
+
+  document.getElementById('gs-bet').textContent     = appStake;
+  document.getElementById('gs-derash').textContent  = fmtNum(appDerash);
+  document.getElementById('gs-players').textContent = fmtNum(appPlayers);
+
+  buildGameBoard();
+  buildAllGameCartelas();
+  resetBingoGame();
+  showScreen('screen-bingo');
+  setTimeout(startBingoGame, 800);
+}
+
+function leaveGame() {
+  stopBingoGame();
+  document.getElementById('win-overlay').classList.remove('active');
+  showScreen('screen-lobby');
+}
+
+/* ── number board ── */
+function buildGameBoard() {
+  const grid=document.getElementById('board-grid'); grid.innerHTML='';
+  for(let n=1;n<=75;n++) {
+    const cell=document.createElement('div');
+    cell.className='board-cell'; cell.textContent=n; cell.id='bd-'+n;
+    grid.appendChild(cell);
+  }
+}
+
+/* ── build all cartela grids (stacked, no tabs) ── */
+function buildAllGameCartelas() {
+  const stack=document.getElementById('game-cartelas-stack'); stack.innerHTML='';
+  gameCartelaData.forEach((cd,idx)=>{
+    const wrap=document.createElement('div'); wrap.className='game-cartela-wrap';
+    wrap.innerHTML=`
+      <div class="game-cartela-title">Cartela #<em>${cd.id}</em></div>
+      <div class="game-cartela-hdr">
+        <div class="gc-col b">B</div><div class="gc-col i">I</div>
+        <div class="gc-col n">N</div><div class="gc-col g">G</div><div class="gc-col o">O</div>
+      </div>
+      <div class="game-cartela-grid" id="gcg-${idx}"></div>`;
+    stack.appendChild(wrap);
+    buildCartelaGrid(idx,cd);
+  });
+}
+
+function buildCartelaGrid(idx,cd) {
+  const grid=document.getElementById('gcg-'+idx); grid.innerHTML='';
+  cd.grid.forEach(row=>row.forEach(val=>{
+    const cell=document.createElement('div');
+    if(val==='FREE') { cell.className='gc-cell free'; cell.textContent='⭐'; }
+    else {
+      cell.className='gc-cell'; cell.textContent=val;
+      applyCartelaState(cell,val,cd);
+      cell.addEventListener('click',()=>handleCartelaClick(idx,val,cell,cd));
+    }
+    grid.appendChild(cell);
+  }));
+}
+
+function applyCartelaState(cell,val,cd) {
+  cell.classList.remove('matched','manually-marked');
+  if(cd.matched.has(val) && !cd.manualDesel.has(val)) cell.classList.add('matched');
+  else if(!cd.matched.has(val) && cd.manualDesel.has(val)) cell.classList.add('manually-marked');
+}
+
+function handleCartelaClick(idx,val,cell,cd) {
+  if(cd.matched.has(val) && !cd.manualDesel.has(val)) {
+    cd.manualDesel.add(val); cell.classList.remove('matched');
+  } else if(cd.manualDesel.has(val)) {
+    cd.manualDesel.delete(val);
+    if(cd.matched.has(val)) cell.classList.add('matched');
+  } else if(!cd.matched.has(val)) {
+    cd.manualDesel.delete(val); cell.classList.add('manually-marked');
+  }
+}
+
+/* ── countdown ── */
+function resetBingoGame() {
+  gameCallCount=0; gameOver=false; gameSecondsLeft=CALL_INTERVAL_SEC;
+  document.getElementById('gs-call').textContent='0';
+  document.getElementById('call-ball-text').textContent='—';
+  document.getElementById('g-cd-fill').style.width='100%';
+  document.getElementById('g-cd-num').textContent=CALL_INTERVAL_SEC;
+  document.getElementById('g-cd-fill').classList.remove('urgent');
+  document.getElementById('bingo-btn').classList.remove('winner');
+  gameNumberPool.length=0;
+  for(let i=1;i<=75;i++) gameNumberPool.push(i);
+  gameCartelaData.forEach(cd=>{cd.matched.clear();cd.manualDesel.clear();});
+}
+
+function startBingoGame() {
+  gameCountdownTimer=setInterval(tickGameCountdown,1000);
+  gameInterval=setInterval(callNumber,CALL_INTERVAL_SEC*1000);
+  gameSecondsLeft=CALL_INTERVAL_SEC; updateGameCountdown();
+}
+function stopBingoGame() { clearInterval(gameInterval); clearInterval(gameCountdownTimer); gameInterval=null; gameCountdownTimer=null; }
+
+function tickGameCountdown() {
+  if(gameOver) return;
+  gameSecondsLeft=Math.max(0,gameSecondsLeft-1);
+  updateGameCountdown();
+}
+function updateGameCountdown() {
+  const fill=document.getElementById('g-cd-fill'), num=document.getElementById('g-cd-num');
+  if(fill) fill.style.width=(gameSecondsLeft/CALL_INTERVAL_SEC*100)+'%';
+  if(num)  num.textContent=gameSecondsLeft;
+  if(fill) fill.classList.toggle('urgent',gameSecondsLeft<=2);
+}
+function resetCallCountdown() {
+  clearInterval(gameCountdownTimer);
+  gameSecondsLeft=CALL_INTERVAL_SEC; updateGameCountdown();
+  gameCountdownTimer=setInterval(tickGameCountdown,1000);
+}
+
+/* ── call number ── */
+function callNumber() {
+  if(gameNumberPool.length===0||gameOver){stopBingoGame();return;}
+  const idx=Math.floor(Math.random()*gameNumberPool.length);
+  const num=gameNumberPool.splice(idx,1)[0];
+  const col=getColLetter(num);
+
+  gameCallCount++;
+  document.getElementById('gs-call').textContent=gameCallCount;
+
+  // Ball pop
+  const ball=document.getElementById('call-ball');
+  ball.classList.remove('pop'); void ball.offsetWidth; ball.classList.add('pop');
+  document.getElementById('call-ball-text').textContent=col+num;
+
+  // Board
+  document.querySelectorAll('.board-cell.called-current').forEach(c=>{
+    c.classList.remove('called-current');
+    const n=parseInt(c.id.replace('bd-',''));
+    const onAny=gameCartelaData.some(cd=>cd.grid.flat().includes(n));
+    c.classList.add(onAny?'called-match':'called-prev');
+  });
+  const bc=document.getElementById('bd-'+num);
+  if(bc){bc.classList.remove('called-prev','called-match');bc.classList.add('called-current');}
+
+  // Auto-match on ALL cartelas + update DOM
+  let bingoFound=false;
+  gameCartelaData.forEach((cd,i)=>{
+    const onCard=cd.grid.flat().includes(num);
+    if(onCard && !cd.manualDesel.has(num)) {
+      cd.matched.add(num);
+      const grid=document.getElementById('gcg-'+i);
+      if(grid) grid.querySelectorAll('.gc-cell:not(.free)').forEach(cell=>{
+        if(parseInt(cell.textContent)===num){
+          cell.classList.remove('manually-marked'); cell.classList.add('matched');
         }
+      });
+    }
+    if(!bingoFound && checkBingo(cd)) bingoFound=true;
+  });
+  if(bingoFound) triggerBingo();
 
-        async function loadGameRooms() {
-            try {
-                const res = await fetch('/api/rooms', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id })
-                });
-                const data = await res.json();
-                renderGameRooms(data.rooms);
-                document.getElementById('balance').innerText = data.balance + ' ETB';
-            } catch (err) { 
-                console.error(err);
-                document.getElementById('roomsList').innerHTML = '<div style="padding:20px;text-align:center">Connection error</div>';
-            }
-        }
+  resetCallCountdown();
+  if(soundEnabled) playCallTone();
+}
 
-        function renderGameRooms(rooms) {
-            const container = document.getElementById('roomsList');
-            container.innerHTML = '';
-            rooms.forEach(room => {
-                const row = document.createElement('div');
-                row.className = 'table-row';
-                row.innerHTML = `
-                    <div>${room.stake} ETB</div>
-                    <div style="color:${room.status.includes('s') ? '#4CAF50' : '#FF9800'}">${room.status}</div>
-                    <div>${room.players}</div>
-                    <div>${room.prize_pool} ETB</div>
-                    <div><button class="play-btn" data-stake="${room.stake}">Play</button></div>
-                `;
-                container.appendChild(row);
-            });
-            document.querySelectorAll('.play-btn').forEach(btn => {
-                btn.addEventListener('click', () => showCartelaSelection(parseInt(btn.dataset.stake)));
-            });
-        }
+/* ── bingo check ── */
+function isCellActive(cd,r,c) {
+  const v=cd.grid[r][c];
+  if(v==='FREE') return true;
+  return cd.matched.has(v)&&!cd.manualDesel.has(v);
+}
+function checkBingo(cd) {
+  for(let r=0;r<5;r++) if([0,1,2,3,4].every(c=>isCellActive(cd,r,c))) return true;
+  for(let c=0;c<5;c++) if([0,1,2,3,4].every(r=>isCellActive(cd,r,c))) return true;
+  if([0,1,2,3,4].every(i=>isCellActive(cd,i,i))) return true;
+  if([0,1,2,3,4].every(i=>isCellActive(cd,i,4-i))) return true;
+  return false;
+}
+function triggerBingo() {
+  gameOver=true; stopBingoGame();
+  document.getElementById('bingo-btn').classList.add('winner');
+  document.getElementById('win-overlay').classList.add('active');
+}
 
-        async function updateBalance() {
-            try {
-                const res = await fetch('/api/balance', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id })
-                });
-                const data = await res.json();
-                document.getElementById('balance').innerText = data.balance + ' ETB';
-                return data.balance;
-            } catch (err) { return 0; }
-        }
+/* ── BINGO button ── */
+document.getElementById('bingo-btn').addEventListener('click',()=>{
+  if(gameCartelaData.some(cd=>checkBingo(cd))) { triggerBingo(); return; }
+  const btn=document.getElementById('bingo-btn');
+  btn.style.transform='translateX(-6px)';
+  setTimeout(()=>btn.style.transform='translateX(6px)',80);
+  setTimeout(()=>btn.style.transform='translateX(-4px)',160);
+  setTimeout(()=>btn.style.transform='translateX(0)',240);
+});
 
-        async function showCartelaSelection(stake) {
-            selectedStake = stake;
-            cartelaQuantity = 1;
-            document.getElementById('cartelaQuantity').innerText = '1';
-            document.getElementById('totalCost').innerText = stake;
-            document.querySelector('.selection-title').innerHTML = '🎫 Choose Cartela #1 🎫';
-            
-            try {
-                const res = await fetch('/api/available_cartelas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id, stake })
-                });
-                const data = await res.json();
-                availableCartelas = data.available_numbers || [];
-                renderAvailableNumbers();
-                document.getElementById('mainMenu').style.display = 'none';
-                document.getElementById('selectionPage').style.display = 'block';
-                document.getElementById('gamePage').style.display = 'none';
-            } catch (err) { 
-                console.error(err);
-                tg.showPopup({ title: 'Error', message: 'Could not load cartela numbers', buttons: [{ type: 'ok' }] });
-            }
-        }
+document.getElementById('win-close').addEventListener('click',()=>{
+  document.getElementById('win-overlay').classList.remove('active');
+  leaveGame();
+});
 
-        function renderAvailableNumbers() {
-            const container = document.getElementById('availableNumbersList');
-            container.innerHTML = '';
-            for (let i = 1; i <= 100; i++) {
-                const taken = availableCartelas.includes(i);
-                const div = document.createElement('div');
-                div.className = 'number-badge' + (taken ? ' taken' : '');
-                div.textContent = i;
-                if (!taken) div.onclick = () => selectCartelaNumber(i);
-                container.appendChild(div);
-            }
-        }
+/* ── sound ── */
+document.getElementById('sound-btn').addEventListener('click',()=>{
+  soundEnabled=!soundEnabled;
+  document.getElementById('sound-btn').classList.toggle('muted',!soundEnabled);
+});
+function playCallTone() {
+  try {
+    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+    osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(660,audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880,audioCtx.currentTime+.12);
+    gain.gain.setValueAtTime(.18,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.35);
+    osc.start(audioCtx.currentTime);osc.stop(audioCtx.currentTime+.36);
+  } catch(e){}
+}
 
-        function selectCartelaNumber(num) {
-            if (availableCartelas.includes(num)) {
-                document.getElementById('selectionError').innerText = '❌ Taken! Pick another.';
-                return;
-            }
-            selectedCartelaNumber = num;
-            document.getElementById('cartelaInput').value = num;
-            document.querySelectorAll('.number-badge').forEach(b => b.classList.remove('selected'));
-            if (event?.target) event.target.classList.add('selected');
-            document.getElementById('selectionError').innerText = '';
-        }
-
-        document.getElementById('decreaseQty')?.addEventListener('click', () => {
-            if (cartelaQuantity > 1) {
-                cartelaQuantity--;
-                document.getElementById('cartelaQuantity').innerText = cartelaQuantity;
-                document.getElementById('totalCost').innerText = selectedStake * cartelaQuantity;
-                document.querySelector('.selection-title').innerHTML = `🎫 Choose Cartela #${cartelaQuantity} 🎫`;
-            }
-        });
-
-        document.getElementById('increaseQty')?.addEventListener('click', () => {
-            if (cartelaQuantity < maxCartelas) {
-                cartelaQuantity++;
-                document.getElementById('cartelaQuantity').innerText = cartelaQuantity;
-                document.getElementById('totalCost').innerText = selectedStake * cartelaQuantity;
-                document.querySelector('.selection-title').innerHTML = `🎫 Choose Cartela #${cartelaQuantity} 🎫`;
-            }
-        });
-
-        document.getElementById('randomCartelaBtn')?.addEventListener('click', () => {
-            for (let i = 1; i <= 100; i++) {
-                if (!availableCartelas.includes(i)) {
-                    selectCartelaNumber(i);
-                    break;
-                }
-            }
-        });
-
-        document.getElementById('confirmSelection')?.addEventListener('click', async () => {
-            if (!selectedCartelaNumber && cartelaQuantity === 1) {
-                document.getElementById('selectionError').innerText = '❌ Select a Cartela number!';
-                return;
-            }
-            
-            const confirmBtn = document.getElementById('confirmSelection');
-            const originalText = confirmBtn.innerText;
-            confirmBtn.innerText = 'Joining...';
-            confirmBtn.disabled = true;
-            
-            try {
-                const res = await fetch('/api/join', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: currentUser.id,
-                        stake: selectedStake,
-                        username: currentUser.first_name,
-                        cartela_number: selectedCartelaNumber,
-                        quantity: cartelaQuantity
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (res.ok) {
-                    currentGame = data.game;
-                    if (data.cartelas) {
-                        currentCartelas = data.cartelas;
-                    } else if (data.cartela) {
-                        currentCartelas = [data.cartela];
-                    }
-                    activeCartelaIndex = 0;
-                    
-                    document.getElementById('selectionPage').style.display = 'none';
-                    document.getElementById('gamePage').style.display = 'block';
-                    
-                    renderGame();
-                    startPolling();
-                    
-                    tg.showPopup({ 
-                        title: '✅ Joined!', 
-                        message: `You bought ${currentCartelas.length} cartela(s)!\nTotal: ${selectedStake * cartelaQuantity} ETB`, 
-                        buttons: [{ type: 'ok' }] 
-                    });
-                } else {
-                    document.getElementById('selectionError').innerText = data.error || 'Failed to join';
-                }
-            } catch (err) {
-                console.error('Join error:', err);
-                document.getElementById('selectionError').innerText = 'Connection error: ' + err.message;
-            } finally {
-                confirmBtn.innerText = originalText;
-                confirmBtn.disabled = false;
-            }
-        });
-
-        document.getElementById('cancelSelection')?.addEventListener('click', () => {
-            document.getElementById('mainMenu').style.display = 'block';
-            document.getElementById('selectionPage').style.display = 'none';
-        });
-
-        document.getElementById('backToMenu')?.addEventListener('click', () => {
-            if (pollingInterval) clearInterval(pollingInterval);
-            document.getElementById('mainMenu').style.display = 'block';
-            document.getElementById('gamePage').style.display = 'none';
-            loadGameRooms();
-            updateBalance();
-        });
-
-        document.getElementById('refreshBalance')?.addEventListener('click', updateBalance);
-
-        document.getElementById('dailyBonusBtn')?.addEventListener('click', async () => {
-            try {
-                const res = await fetch('/api/daily_bonus', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    await updateBalance();
-                    tg.showPopup({ title: '🎁 Daily Bonus!', message: data.message, buttons: [{ type: 'ok' }] });
-                } else {
-                    tg.showPopup({ title: 'Already Claimed', message: data.message, buttons: [{ type: 'ok' }] });
-                }
-            } catch (err) { console.error(err); }
-        });
-
-        function renderGame() {
-            if (!currentGame || !currentCartelas.length) return;
-            
-            document.getElementById('gameNumber').innerText = currentGame.game_number || '13';
-            document.getElementById('gameBalance').innerText = currentGame.balance + ' ETB';
-            document.getElementById('stakeAmount').innerText = currentGame.stake + ' ETB';
-            if (currentGame.prize_pool) document.getElementById('prizePool').innerText = currentGame.prize_pool + ' ETB';
-
-            const grid = document.getElementById('numberGrid');
-            grid.innerHTML = '';
-            const drawn = currentGame.drawn_numbers || [];
-            for (let i = 1; i <= 75; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'number-cell';
-                if (drawn.includes(i)) cell.classList.add('drawn');
-                cell.textContent = i;
-                grid.appendChild(cell);
-            }
-            
-            const selector = document.getElementById('cartelaSelector');
-            selector.innerHTML = '';
-            currentCartelas.forEach((c, idx) => {
-                const tab = document.createElement('div');
-                tab.className = 'cartela-tab' + (idx === activeCartelaIndex ? ' active' : '');
-                tab.textContent = `#${c.cartela_number}`;
-                tab.onclick = () => {
-                    activeCartelaIndex = idx;
-                    renderActiveCartela();
-                    document.querySelectorAll('.cartela-tab').forEach((t, i) => {
-                        t.classList.toggle('active', i === activeCartelaIndex);
-                    });
-                };
-                selector.appendChild(tab);
-            });
-            
-            renderActiveCartela();
-        }
-
-        function renderActiveCartela() {
-            if (!currentCartelas[activeCartelaIndex]) return;
-            const cartela = currentCartelas[activeCartelaIndex];
-            document.getElementById('cartelaNumber').innerText = cartela.cartela_number;
-            
-            const bingo = document.getElementById('bingoGrid');
-            bingo.innerHTML = '';
-            cartela.card.forEach((row, i) => {
-                row.forEach((val, j) => {
-                    const cell = document.createElement('div');
-                    cell.className = 'card-cell';
-                    if (val === '★') { cell.classList.add('free'); cell.textContent = '★'; }
-                    else cell.textContent = val;
-                    if (cartela.marked?.[i]?.[j]) cell.classList.add('marked');
-                    bingo.appendChild(cell);
-                });
-            });
-        }
-
-        function showNumberPopup(number) {
-            const existing = document.querySelector('.number-popup');
-            if (existing) existing.remove();
-            const popup = document.createElement('div');
-            popup.className = 'number-popup';
-            popup.textContent = number;
-            document.body.appendChild(popup);
-            setTimeout(() => popup.remove(), 800);
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        }
-
-        function startPolling() {
-            if (pollingInterval) clearInterval(pollingInterval);
-            pollingInterval = setInterval(async () => {
-                if (!currentGame) return;
-                try {
-                    const res = await fetch('/api/game_status', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_id: currentUser.id, game_id: currentGame.game_id })
-                    });
-                    const data = await res.json();
-                    if (data.game_completed) {
-                        clearInterval(pollingInterval);
-                        if (data.won) {
-                            showWinner(data.win_amount);
-                            await updateBalance();
-                            tg.showPopup({ title: '🎉 BINGO!', message: `You won ${data.win_amount} ETB!` });
-                        } else if (data.winner_info) {
-                            tg.showPopup({ title: '🏆 Game Over', message: `${data.winner_info.username} won ${data.winner_info.amount} ETB!` });
-                        }
-                        setTimeout(() => document.getElementById('backToMenu').click(), 5000);
-                    } else {
-                        if (data.game?.drawn_numbers?.length > lastNumberCount) {
-                            showNumberPopup(data.game.drawn_numbers[data.game.drawn_numbers.length - 1]);
-                            lastNumberCount = data.game.drawn_numbers.length;
-                        }
-                        if (data.game) currentGame = data.game;
-                        if (data.cartelas) currentCartelas = data.cartelas;
-                        else if (data.cartela) currentCartelas = [data.cartela];
-                        renderGame();
-                        document.getElementById('gameBalance').innerText = (currentGame?.balance || 0) + ' ETB';
-                    }
-                } catch (err) { console.error(err); }
-            }, 2000);
-        }
-
-        function showWinner(amount) {
-            const overlay = document.createElement('div');
-            overlay.className = 'winner-overlay';
-            overlay.innerHTML = `
-                <div class="winner-card">
-                    <h2>🎉 BINGO! 🎉</h2>
-                    <div>${currentUser.first_name} won!</div>
-                    <div class="amount">${amount} Birr</div>
-                    <button onclick="this.parentElement.parentElement.remove()" style="padding:10px 20px;">OK</button>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-        }
-
-        init();
-    </script>
+/* ═══════════════════════════════════════
+   BOOT
+═══════════════════════════════════════ */
+renderLobby();
+buildPoolGrid();
+setInterval(lobbyTick, 1000);
+</script>
 </body>
 </html>
