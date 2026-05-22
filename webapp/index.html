@@ -398,500 +398,682 @@ html,body { height:100%; width:100%; overflow:hidden; font-family:'Outfit',sans-
 
 
 <script>
-'use strict';
+
+        'use strict';
 
 /* ═══════════════════════════════════════
-   SHARED STATE
+   SHARED STATE & API CONFIG
 ═══════════════════════════════════════ */
-let appBalance  = 385;
-let appStake    = 0;
-let appPlayers  = 0;
-let appDerash   = 0;
-let appGameId   = '';
+let appBalance = 385;
+let appStake = 0;
+let appPlayers = 0;
+let appDerash = 0;
+let appGameId = '';
+
+// API Base URL - automatically detects environment
+const API_BASE = window.location.origin;
+
+/* ═══════════════════════════════════════
+   API HELPER FUNCTIONS
+═══════════════════════════════════════ */
+async function apiCall(endpoint, method = 'GET', data = null) {
+    try {
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (data) options.body = JSON.stringify(data);
+        
+        const response = await fetch(`${API_BASE}${endpoint}`, options);
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        return null;
+    }
+}
+
+async function updateBalanceFromAPI(userId = 'current') {
+    const result = await apiCall('/api/balance', 'POST', { user_id: userId });
+    if (result && result.balance !== undefined) {
+        appBalance = result.balance;
+        document.getElementById('bal').textContent = `${appBalance} ETB`;
+        document.getElementById('p-wallet').textContent = `${appBalance} ETB`;
+        return result.balance;
+    }
+    return appBalance;
+}
 
 /* ═══════════════════════════════════════
    SCREEN NAVIGATION
 ═══════════════════════════════════════ */
 function showScreen(nextId) {
-  const cur = document.querySelector('.screen:not(.hidden):not(.slide-away)');
-  if (cur && cur.id !== nextId) cur.classList.add('slide-away');
-  setTimeout(() => {
-    document.querySelectorAll('.screen').forEach(s => {
-      s.classList.remove('slide-away');
-      s.classList.toggle('hidden', s.id !== nextId);
-    });
-  }, 300);
+    const cur = document.querySelector('.screen:not(.hidden):not(.slide-away)');
+    if (cur && cur.id !== nextId) cur.classList.add('slide-away');
+    setTimeout(() => {
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('slide-away');
+            s.classList.toggle('hidden', s.id !== nextId);
+        });
+    }, 300);
 }
 
 /* ═══════════════════════════════════════
    CARTELA ENGINE
 ═══════════════════════════════════════ */
 function seededRng(seed) {
-  let s = (seed ^ 0xdeadbeef) >>> 0;
-  return () => {
-    s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) | 0;
-    s = Math.imul(s ^ (s >>> 12), 0x297a2153) | 0;
-    s = (s ^ (s >>> 13)) >>> 0;
-    return s / 0x100000000;
-  };
-}
-function shuffleWith(arr, rng) {
-  const a = arr.slice();
-  for (let i = a.length-1; i > 0; i--) {
-    const j = Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
-  }
-  return a;
-}
-function generateCartela(id) {
-  const rng = seededRng(id * 0x9e3779b9 + 0x6b43a9c5);
-  const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-  const cols = ranges.map(([lo,hi]) => {
-    const pool=[]; for(let n=lo;n<=hi;n++) pool.push(n);
-    return shuffleWith(pool,rng).slice(0,5);
-  });
-  const grid=[];
-  for(let r=0;r<5;r++) grid.push(cols.map(c=>c[r]));
-  grid[2][2]='FREE';
-  return grid;
-}
-function getColLetter(n) {
-  if(n<=15) return 'B'; if(n<=30) return 'I'; if(n<=45) return 'N'; if(n<=60) return 'G'; return 'O';
+    let s = (seed ^ 0xdeadbeef) >>> 0;
+    return () => {
+        s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) | 0;
+        s = Math.imul(s ^ (s >>> 12), 0x297a2153) | 0;
+        s = (s ^ (s >>> 13)) >>> 0;
+        return s / 0x100000000;
+    };
 }
 
+function shuffleWith(arr, rng) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+function generateCartela(id) {
+    const rng = seededRng(id * 0x9e3779b9 + 0x6b43a9c5);
+    const ranges = [[1, 15], [16, 30], [31, 45], [46, 60], [61, 75]];
+    const cols = ranges.map(([lo, hi]) => {
+        const pool = [];
+        for (let n = lo; n <= hi; n++) pool.push(n);
+        return shuffleWith(pool, rng).slice(0, 5);
+    });
+    const grid = [];
+    for (let r = 0; r < 5; r++) grid.push(cols.map(c => c[r]));
+    grid[2][2] = 'FREE';
+    return grid;
+}
+
+function getColLetter(n) {
+    if (n <= 15) return 'B';
+    if (n <= 30) return 'I';
+    if (n <= 45) return 'N';
+    if (n <= 60) return 'G';
+    return 'O';
+}
 
 /* ═══════════════════════════════════════
-   LOBBY LOGIC
+   LOBBY LOGIC (NOW FETCHING FROM API)
 ═══════════════════════════════════════ */
-const LOBBY_CD=20, PLAYING_CD=30;
-const games = [
-  { id:'g10', stake:10,  players:140, state:'lobby',   cd:18 },
-  { id:'g20', stake:20,  players:102, state:'lobby',   cd:11 },
-  { id:'g50', stake:50,  players:90,  state:'playing', cd:22 },
-];
-const fmtNum = n => Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
-const derashOf = g => g.players * g.stake;
+let games = [];
+let lobbyTimer = null;
+
+async function fetchGameRooms() {
+    const result = await apiCall('/api/rooms', 'POST', {});
+    if (result && result.rooms) {
+        games = result.rooms;
+        if (result.balance !== undefined) {
+            appBalance = result.balance;
+            document.getElementById('bal').textContent = `${appBalance} ETB`;
+        }
+        renderLobby();
+    }
+    return games;
+}
 
 function renderLobby() {
-  const wrap = document.getElementById('l-rows');
-  wrap.innerHTML='';
-  games.forEach(g => {
-    const isL=g.state==='lobby', isP=g.state==='playing', isF=g.state==='finished';
-    let statusHTML;
-    if(isL) statusHTML=`<span class="b-timer${g.cd<=5?' urg':''}" id="ltm-${g.id}">${g.cd}s</span>`;
-    else if(isP) statusHTML=`<span class="b-playing">playing</span>`;
-    else statusHTML=`<span class="b-finished">Finished</span>`;
-    const btnHTML = isL
-      ? `<button class="btn-play" onclick="joinGame('${g.id}')">Play</button>`
-      : `<button class="btn-disabled">Playing</button>`;
-    const outer=document.createElement('div');
-    outer.className='row-outer'; outer.id='lo-'+g.id;
-    outer.innerHTML=`
-      <div class="badge"><span class="bdot"></span>Active game</div>
-      <div class="grow${(isP||isF)?' dim':''}" id="lgrow-${g.id}">
-        <div class="lstake">${g.stake} ETB</div>
-        <div class="lscell">${statusHTML}</div>
-        <div class="lpcell" id="lpc-${g.id}">${fmtNum(g.players)}</div>
-        <div class="ldcell" id="ldc-${g.id}">${fmtNum(derashOf(g))} ETB<small>Prize Pool</small></div>
-        <div class="lplaycell">${btnHTML}</div>
-      </div>`;
-    wrap.appendChild(outer);
-  });
-}
-function patchLobbyTimer(g) {
-  const el=document.getElementById('ltm-'+g.id); if(!el) return;
-  el.textContent=g.cd+'s';
-  if(g.cd<=5) el.classList.add('urg'); else el.classList.remove('urg');
-}
-function patchLobbyNumbers(g) {
-  const pc=document.getElementById('lpc-'+g.id), dc=document.getElementById('ldc-'+g.id);
-  if(pc) pc.textContent=fmtNum(g.players);
-  if(dc) dc.innerHTML=fmtNum(derashOf(g))+' ETB<small>Prize Pool</small>';
-}
-function lobbyTick() {
-  let needRender=false;
-  games.forEach(g => {
-    g.cd=Math.max(0,g.cd-1);
-    if(g.state==='lobby') {
-      if(g.cd>0) { const j=Math.floor(Math.random()*5); if(j>0){g.players+=j;patchLobbyNumbers(g);} patchLobbyTimer(g); }
-      else { g.state='playing'; g.cd=PLAYING_CD; needRender=true; }
-    } else if(g.state==='playing') {
-      if(g.cd<=0) { g.state='finished'; g.cd=1; needRender=true; }
-    } else if(g.state==='finished') {
-      if(g.cd<=0) { g.state='lobby'; g.cd=LOBBY_CD; g.players=60+Math.floor(Math.random()*90); needRender=true; }
-      else g.cd--;
-    }
-  });
-  if(needRender) renderLobby();
-}
-function joinGame(id) {
-  const g=games.find(x=>x.id===id);
-  if(!g||g.state!=='lobby') return;
-  appGameId=id; appStake=g.stake; appPlayers=g.players; appDerash=derashOf(g);
-  g.state='playing'; g.cd=PLAYING_CD;
-  renderLobby();
-  openPicker();
-}
-function doRefresh() {
-  const icon=document.getElementById('ri');
-  icon.style.transition='transform .6s ease'; icon.style.transform='rotate(360deg)';
-  setTimeout(()=>{icon.style.transition='none'; icon.style.transform='rotate(0deg)';},680);
-  games.forEach(g=>{ if(g.state==='lobby'){g.players+=Math.floor(Math.random()*8)+2;patchLobbyNumbers(g);} });
+    const wrap = document.getElementById('l-rows');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    games.forEach(g => {
+        const isL = g.state === 'lobby';
+        const isP = g.state === 'playing';
+        const isF = g.state === 'finished';
+        
+        let statusHTML;
+        if (isL) statusHTML = `<span class="b-timer${g.cd <= 5 ? ' urg' : ''}" id="ltm-${g.id}">${g.cd}s</span>`;
+        else if (isP) statusHTML = `<span class="b-playing">playing</span>`;
+        else statusHTML = `<span class="b-finished">Finished</span>`;
+        
+        const btnHTML = isL
+            ? `<button class="btn-play" onclick="joinGame('${g.id}')">Play</button>`
+            : `<button class="btn-disabled">Playing</button>`;
+        
+        const prizePool = g.prize_pool || (g.players * g.stake);
+        
+        const outer = document.createElement('div');
+        outer.className = 'row-outer';
+        outer.id = 'lo-' + g.id;
+        outer.innerHTML = `
+            <div class="badge"><span class="bdot"></span>Active game</div>
+            <div class="grow${(isP || isF) ? ' dim' : ''}" id="lgrow-${g.id}">
+                <div class="lstake">${g.stake} ETB</div>
+                <div class="lscell">${statusHTML}</div>
+                <div class="lpcell" id="lpc-${g.id}">${g.players.toLocaleString()}</div>
+                <div class="ldcell" id="ldc-${g.id}">${prizePool.toLocaleString()} ETB<small>Prize Pool</small></div>
+                <div class="lplaycell">${btnHTML}</div>
+            </div>`;
+        wrap.appendChild(outer);
+    });
 }
 
+function startLobbyTimer() {
+    if (lobbyTimer) clearInterval(lobbyTimer);
+    lobbyTimer = setInterval(async () => {
+        await fetchGameRooms();
+    }, 5000);
+}
 
 /* ═══════════════════════════════════════
    CARTELA PICKER LOGIC
 ═══════════════════════════════════════ */
 let pickerSelectedIds = [];
-let pickerTimer       = null;
-let pickerCd          = LOBBY_CD;
+let pickerTimer = null;
+let pickerCd = 20;
 
-function openPicker() {
-  document.getElementById('p-wallet').textContent = appBalance+' ETB';
-  document.getElementById('p-stake').textContent  = appStake+' ETB';
-  resetPicker();
-  startPickerCountdown();
-  showScreen('screen-cartela');
+async function joinGame(id) {
+    const g = games.find(x => x.id === id);
+    if (!g || g.state !== 'lobby') return;
+    
+    appGameId = id;
+    appStake = g.stake;
+    appPlayers = g.players;
+    appDerash = g.prize_pool || (g.players * g.stake);
+    
+    // Update game state optimistically
+    g.state = 'playing';
+    g.cd = 30;
+    renderLobby();
+    openPicker();
+}
+
+async function openPicker() {
+    document.getElementById('p-wallet').textContent = `${appBalance} ETB`;
+    document.getElementById('p-stake').textContent = `${appStake} ETB`;
+    resetPicker();
+    startPickerCountdown();
+    showScreen('screen-cartela');
 }
 
 function resetPicker() {
-  pickerSelectedIds=[];
-  document.querySelectorAll('.pool-cell').forEach(c=>c.classList.remove('active','visited'));
-  renderPreview();
+    pickerSelectedIds = [];
+    document.querySelectorAll('.pool-cell').forEach(c => c.classList.remove('active', 'visited'));
+    renderPreview();
 }
 
-/* ── countdown: auto-starts game at 0 ── */
 function startPickerCountdown() {
-  clearInterval(pickerTimer);
-  pickerCd = LOBBY_CD;
-  updatePickerCdDisplay();
-  pickerTimer = setInterval(()=>{
-    pickerCd--;
+    if (pickerTimer) clearInterval(pickerTimer);
+    pickerCd = 20;
     updatePickerCdDisplay();
-    if(pickerCd<=0) { clearInterval(pickerTimer); goGame(); }
-  },1000);
+    pickerTimer = setInterval(() => {
+        pickerCd--;
+        updatePickerCdDisplay();
+        if (pickerCd <= 0) {
+            clearInterval(pickerTimer);
+            goGame();
+        }
+    }, 1000);
 }
-function stopPickerCountdown() { clearInterval(pickerTimer); pickerTimer=null; }
+
+function stopPickerCountdown() {
+    if (pickerTimer) clearInterval(pickerTimer);
+    pickerTimer = null;
+}
+
 function updatePickerCdDisplay() {
-  const el=document.getElementById('p-cd-val'); if(!el) return;
-  el.textContent=Math.max(0,pickerCd)+'s';
-  if(pickerCd<=5) el.classList.add('urg'); else el.classList.remove('urg');
+    const el = document.getElementById('p-cd-val');
+    if (!el) return;
+    el.textContent = Math.max(0, pickerCd) + 's';
+    if (pickerCd <= 5) el.classList.add('urg');
+    else el.classList.remove('urg');
 }
 
 function pickerBack() {
-  stopPickerCountdown();
-  const g=games.find(x=>x.id===appGameId);
-  if(g && g.state==='playing') { g.state='lobby'; g.cd=LOBBY_CD; renderLobby(); }
-  showScreen('screen-lobby');
+    stopPickerCountdown();
+    const g = games.find(x => x.id === appGameId);
+    if (g && g.state === 'playing') {
+        g.state = 'lobby';
+        g.cd = 20;
+        renderLobby();
+    }
+    showScreen('screen-lobby');
 }
 
-/* ── build pool grid once ── */
 function buildPoolGrid() {
-  const grid=document.getElementById('pool-grid');
-  const frag=document.createDocumentFragment();
-  for(let n=1;n<=400;n++) {
-    const cell=document.createElement('div');
-    cell.className='pool-cell'; cell.textContent=n; cell.id='pp-'+n;
-    cell.addEventListener('click',()=>onPickerSelect(n));
-    frag.appendChild(cell);
-  }
-  grid.appendChild(frag);
+    const grid = document.getElementById('pool-grid');
+    if (!grid) return;
+    const frag = document.createDocumentFragment();
+    for (let n = 1; n <= 400; n++) {
+        const cell = document.createElement('div');
+        cell.className = 'pool-cell';
+        cell.textContent = n;
+        cell.id = 'pp-' + n;
+        cell.addEventListener('click', () => onPickerSelect(n));
+        frag.appendChild(cell);
+    }
+    grid.appendChild(frag);
 }
 
 function onPickerSelect(id) {
-  if(pickerSelectedIds.includes(id)) {
-    // deselect
-    pickerSelectedIds=pickerSelectedIds.filter(x=>x!==id);
-    document.getElementById('pp-'+id).classList.remove('active');
-  } else {
-    if(pickerSelectedIds.length>=2) return;
-    pickerSelectedIds.push(id);
-    const cell=document.getElementById('pp-'+id);
-    if(cell){ cell.classList.add('active'); cell.scrollIntoView({block:'nearest',behavior:'smooth'}); }
-  }
-  renderPreview();
+    if (pickerSelectedIds.includes(id)) {
+        pickerSelectedIds = pickerSelectedIds.filter(x => x !== id);
+        document.getElementById('pp-' + id).classList.remove('active');
+    } else {
+        if (pickerSelectedIds.length >= 2) return;
+        pickerSelectedIds.push(id);
+        const cell = document.getElementById('pp-' + id);
+        if (cell) {
+            cell.classList.add('active');
+            cell.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+    renderPreview();
 }
 
-/* ── preview: idle / 1 cartela / 2 cartelas side-by-side ── */
 function renderPreview() {
-  const body=document.getElementById('preview-body');
-  const badge=document.getElementById('p-sel-badge');
-  badge.textContent=pickerSelectedIds.length+' / 2 selected';
-  body.innerHTML='';
-
-  if(pickerSelectedIds.length===0) {
-    body.innerHTML=`
-      <div class="idle-block">
-        <div class="idle-icon">🎯</div>
-        <div class="idle-txt">Kutr ይምረጡ · Cartela ይታያል</div>
-      </div>`;
-    return;
-  }
-  // Show 1 or 2 cartelas side by side
-  pickerSelectedIds.forEach(id=>{
-    const grid=generateCartela(id);
-    const card=document.createElement('div');
-    card.className='mini-card';
-    card.innerHTML=`
-      <div class="mini-card-title">Cartela #<em>${id}</em></div>
-      <div class="mini-hdr">
-        <div class="mh B">B</div><div class="mh I">I</div>
-        <div class="mh N">N</div><div class="mh G">G</div><div class="mh O">O</div>
-      </div>
-      <div class="mini-grid">
-        ${grid.flat().map(v=>
-          v==='FREE'
-            ? `<div class="mc free">★</div>`
-            : `<div class="mc">${v}</div>`
-        ).join('')}
-      </div>`;
-    body.appendChild(card);
-  });
+    const body = document.getElementById('preview-body');
+    const badge = document.getElementById('p-sel-badge');
+    if (!body) return;
+    
+    if (badge) badge.textContent = `${pickerSelectedIds.length} / 2 selected`;
+    body.innerHTML = '';
+    
+    if (pickerSelectedIds.length === 0) {
+        body.innerHTML = `
+            <div class="idle-block">
+                <div class="idle-icon">🎯</div>
+                <div class="idle-txt">Kutr ይምረጡ · Cartela ይታያል</div>
+            </div>`;
+        return;
+    }
+    
+    pickerSelectedIds.forEach(id => {
+        const grid = generateCartela(id);
+        const card = document.createElement('div');
+        card.className = 'mini-card';
+        card.innerHTML = `
+            <div class="mini-card-title">Cartela #<em>${id}</em></div>
+            <div class="mini-hdr">
+                <div class="mh B">B</div><div class="mh I">I</div>
+                <div class="mh N">N</div><div class="mh G">G</div><div class="mh O">O</div>
+            </div>
+            <div class="mini-grid">
+                ${grid.flat().map(v =>
+                    v === 'FREE'
+                        ? `<div class="mc free">★</div>`
+                        : `<div class="mc">${v}</div>`
+                ).join('')}
+            </div>`;
+        body.appendChild(card);
+    });
 }
-
 
 /* ═══════════════════════════════════════
-   BINGO GAME
+   BINGO GAME (INTEGRATED WITH API)
 ═══════════════════════════════════════ */
 const CALL_INTERVAL_SEC = 5;
-let gameCartelaData     = [];
-let gameCallCount       = 0;
-let gameNumberPool      = [];
-let gameInterval        = null;
-let gameCountdownTimer  = null;
-let gameSecondsLeft     = CALL_INTERVAL_SEC;
-let gameOver            = false;
-let soundEnabled        = true;
-let audioCtx            = null;
+let gameCartelaData = [];
+let gameCallCount = 0;
+let gameNumberPool = [];
+let gameInterval = null;
+let gameCountdownTimer = null;
+let gameSecondsLeft = CALL_INTERVAL_SEC;
+let gameOver = false;
+let soundEnabled = true;
+let audioCtx = null;
+let gamePollingInterval = null;
 
-function goGame() {
-  stopPickerCountdown();
-  // If nothing selected, auto-pick a random cartela
-  if(pickerSelectedIds.length===0) {
-    pickerSelectedIds=[Math.floor(Math.random()*400)+1];
-  }
-  gameCartelaData = pickerSelectedIds.map(id=>({
-    id, grid:generateCartela(id), matched:new Set(), manualDesel:new Set()
-  }));
+async function goGame() {
+    stopPickerCountdown();
+    
+    if (pickerSelectedIds.length === 0) {
+        pickerSelectedIds = [Math.floor(Math.random() * 400) + 1];
+    }
+    
+    // Call backend to join game
+    const joinResult = await apiCall('/api/join', 'POST', {
+        game_id: appGameId,
+        cartela_ids: pickerSelectedIds,
+        user_id: 'current'
+    });
+    
+    if (!joinResult || !joinResult.success) {
+        alert(joinResult?.error || 'Failed to join game. Please try again.');
+        pickerBack();
+        return;
+    }
+    
+    appBalance = joinResult.balance;
+    document.getElementById('bal').textContent = `${appBalance} ETB`;
+    
+    gameCartelaData = joinResult.cartelas.map(c => ({
+        id: c.id,
+        grid: c.grid,
+        matched: new Set(),
+        manualDesel: new Set()
+    }));
+    
+    document.getElementById('gs-bet').textContent = joinResult.stake;
+    document.getElementById('gs-derash').textContent = joinResult.prize_pool.toLocaleString();
+    document.getElementById('gs-players').textContent = joinResult.players.toLocaleString();
+    
+    buildGameBoard();
+    buildAllGameCartelas();
+    resetBingoGame();
+    showScreen('screen-bingo');
+    
+    // Start game polling for numbers
+    startGamePolling();
+}
 
-  document.getElementById('gs-bet').textContent     = appStake;
-  document.getElementById('gs-derash').textContent  = fmtNum(appDerash);
-  document.getElementById('gs-players').textContent = fmtNum(appPlayers);
+function startGamePolling() {
+    if (gamePollingInterval) clearInterval(gamePollingInterval);
+    
+    gamePollingInterval = setInterval(async () => {
+        if (gameOver) return;
+        
+        const result = await apiCall('/api/game/next_number', 'POST', {
+            game_id: appGameId
+        });
+        
+        if (result && result.number) {
+            handleCalledNumber(result.number);
+        }
+        if (result && result.game_over) {
+            stopGamePolling();
+        }
+    }, CALL_INTERVAL_SEC * 1000);
+}
 
-  buildGameBoard();
-  buildAllGameCartelas();
-  resetBingoGame();
-  showScreen('screen-bingo');
-  setTimeout(startBingoGame, 800);
+function stopGamePolling() {
+    if (gamePollingInterval) clearInterval(gamePollingInterval);
+    gamePollingInterval = null;
+}
+
+function handleCalledNumber(num) {
+    const col = getColLetter(num);
+    
+    gameCallCount++;
+    document.getElementById('gs-call').textContent = gameCallCount;
+    
+    // Ball pop animation
+    const ball = document.getElementById('call-ball');
+    if (ball) {
+        ball.classList.remove('pop');
+        void ball.offsetWidth;
+        ball.classList.add('pop');
+    }
+    document.getElementById('call-ball-text').textContent = col + num;
+    
+    // Update board
+    document.querySelectorAll('.board-cell.called-current').forEach(c => {
+        c.classList.remove('called-current');
+        const n = parseInt(c.id.replace('bd-', ''));
+        const onAny = gameCartelaData.some(cd => cd.grid.flat().includes(n));
+        c.classList.add(onAny ? 'called-match' : 'called-prev');
+    });
+    const bc = document.getElementById('bd-' + num);
+    if (bc) {
+        bc.classList.remove('called-prev', 'called-match');
+        bc.classList.add('called-current');
+    }
+    
+    // Auto-match on cartelas
+    let bingoFound = false;
+    gameCartelaData.forEach((cd, idx) => {
+        const onCard = cd.grid.flat().includes(num);
+        if (onCard && !cd.manualDesel.has(num)) {
+            cd.matched.add(num);
+            const grid = document.getElementById('gcg-' + idx);
+            if (grid) {
+                grid.querySelectorAll('.gc-cell:not(.free)').forEach(cell => {
+                    if (parseInt(cell.textContent) === num) {
+                        cell.classList.remove('manually-marked');
+                        cell.classList.add('matched');
+                    }
+                });
+            }
+        }
+        if (!bingoFound && checkBingo(cd)) bingoFound = true;
+    });
+    
+    if (bingoFound) triggerBingo();
+    
+    // Reset countdown
+    resetCallCountdown();
+    if (soundEnabled) playCallTone();
+}
+
+function resetCallCountdown() {
+    if (gameCountdownTimer) clearInterval(gameCountdownTimer);
+    gameSecondsLeft = CALL_INTERVAL_SEC;
+    updateGameCountdown();
+    gameCountdownTimer = setInterval(() => {
+        if (gameOver) return;
+        gameSecondsLeft = Math.max(0, gameSecondsLeft - 1);
+        updateGameCountdown();
+    }, 1000);
+}
+
+function updateGameCountdown() {
+    const fill = document.getElementById('g-cd-fill');
+    const num = document.getElementById('g-cd-num');
+    if (fill) fill.style.width = (gameSecondsLeft / CALL_INTERVAL_SEC * 100) + '%';
+    if (num) num.textContent = gameSecondsLeft;
+    if (fill) fill.classList.toggle('urgent', gameSecondsLeft <= 2);
+}
+
+async function triggerBingo() {
+    gameOver = true;
+    stopGamePolling();
+    if (gameCountdownTimer) clearInterval(gameCountdownTimer);
+    if (gameInterval) clearInterval(gameInterval);
+    
+    // Find winning cartela
+    const winningCartela = gameCartelaData.find(cd => checkBingo(cd));
+    
+    const result = await apiCall('/api/game/bingo', 'POST', {
+        game_id: appGameId,
+        cartela_id: winningCartela?.id,
+        user_id: 'current'
+    });
+    
+    if (result && result.success) {
+        appBalance = result.new_balance;
+        document.getElementById('bal').textContent = `${appBalance} ETB`;
+        
+        document.getElementById('bingo-btn').classList.add('winner');
+        document.getElementById('win-overlay').classList.add('active');
+        
+        // Show win amount in overlay
+        const winBox = document.querySelector('.win-box p');
+        if (winBox) winBox.innerHTML = `You won ${result.win_amount.toLocaleString()} ETB!`;
+    }
+}
+
+/* ── Rest of the game functions remain the same ── */
+function buildGameBoard() {
+    const grid = document.getElementById('board-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (let n = 1; n <= 75; n++) {
+        const cell = document.createElement('div');
+        cell.className = 'board-cell';
+        cell.textContent = n;
+        cell.id = 'bd-' + n;
+        grid.appendChild(cell);
+    }
+}
+
+function buildAllGameCartelas() {
+    const stack = document.getElementById('game-cartelas-stack');
+    if (!stack) return;
+    stack.innerHTML = '';
+    gameCartelaData.forEach((cd, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'game-cartela-wrap';
+        wrap.innerHTML = `
+            <div class="game-cartela-title">Cartela #<em>${cd.id}</em></div>
+            <div class="game-cartela-hdr">
+                <div class="gc-col b">B</div><div class="gc-col i">I</div>
+                <div class="gc-col n">N</div><div class="gc-col g">G</div><div class="gc-col o">O</div>
+            </div>
+            <div class="game-cartela-grid" id="gcg-${idx}"></div>`;
+        stack.appendChild(wrap);
+        buildCartelaGrid(idx, cd);
+    });
+}
+
+function buildCartelaGrid(idx, cd) {
+    const grid = document.getElementById('gcg-' + idx);
+    if (!grid) return;
+    grid.innerHTML = '';
+    cd.grid.forEach(row => {
+        row.forEach(val => {
+            const cell = document.createElement('div');
+            if (val === 'FREE') {
+                cell.className = 'gc-cell free';
+                cell.textContent = '⭐';
+            } else {
+                cell.className = 'gc-cell';
+                cell.textContent = val;
+                applyCartelaState(cell, val, cd);
+                cell.addEventListener('click', () => handleCartelaClick(idx, val, cell, cd));
+            }
+            grid.appendChild(cell);
+        });
+    });
+}
+
+function applyCartelaState(cell, val, cd) {
+    cell.classList.remove('matched', 'manually-marked');
+    if (cd.matched.has(val) && !cd.manualDesel.has(val)) cell.classList.add('matched');
+    else if (!cd.matched.has(val) && cd.manualDesel.has(val)) cell.classList.add('manually-marked');
+}
+
+function handleCartelaClick(idx, val, cell, cd) {
+    if (cd.matched.has(val) && !cd.manualDesel.has(val)) {
+        cd.manualDesel.add(val);
+        cell.classList.remove('matched');
+    } else if (cd.manualDesel.has(val)) {
+        cd.manualDesel.delete(val);
+        if (cd.matched.has(val)) cell.classList.add('matched');
+    } else if (!cd.matched.has(val)) {
+        cd.manualDesel.delete(val);
+        cell.classList.add('manually-marked');
+    }
+}
+
+function resetBingoGame() {
+    gameCallCount = 0;
+    gameOver = false;
+    gameSecondsLeft = CALL_INTERVAL_SEC;
+    document.getElementById('gs-call').textContent = '0';
+    document.getElementById('call-ball-text').textContent = '—';
+    document.getElementById('g-cd-fill').style.width = '100%';
+    document.getElementById('g-cd-num').textContent = CALL_INTERVAL_SEC;
+    document.getElementById('g-cd-fill').classList.remove('urgent');
+    document.getElementById('bingo-btn').classList.remove('winner');
+    gameNumberPool = [];
+    for (let i = 1; i <= 75; i++) gameNumberPool.push(i);
+    gameCartelaData.forEach(cd => {
+        cd.matched.clear();
+        cd.manualDesel.clear();
+    });
+}
+
+function isCellActive(cd, r, c) {
+    const v = cd.grid[r][c];
+    if (v === 'FREE') return true;
+    return cd.matched.has(v) && !cd.manualDesel.has(v);
+}
+
+function checkBingo(cd) {
+    for (let r = 0; r < 5; r++) {
+        if ([0, 1, 2, 3, 4].every(c => isCellActive(cd, r, c))) return true;
+    }
+    for (let c = 0; c < 5; c++) {
+        if ([0, 1, 2, 3, 4].every(r => isCellActive(cd, r, c))) return true;
+    }
+    if ([0, 1, 2, 3, 4].every(i => isCellActive(cd, i, i))) return true;
+    if ([0, 1, 2, 3, 4].every(i => isCellActive(cd, i, 4 - i))) return true;
+    return false;
 }
 
 function leaveGame() {
-  stopBingoGame();
-  document.getElementById('win-overlay').classList.remove('active');
-  showScreen('screen-lobby');
+    stopGamePolling();
+    if (gameCountdownTimer) clearInterval(gameCountdownTimer);
+    if (gameInterval) clearInterval(gameInterval);
+    document.getElementById('win-overlay').classList.remove('active');
+    showScreen('screen-lobby');
+    fetchGameRooms();
+    updateBalanceFromAPI();
 }
 
-/* ── number board ── */
-function buildGameBoard() {
-  const grid=document.getElementById('board-grid'); grid.innerHTML='';
-  for(let n=1;n<=75;n++) {
-    const cell=document.createElement('div');
-    cell.className='board-cell'; cell.textContent=n; cell.id='bd-'+n;
-    grid.appendChild(cell);
-  }
-}
-
-/* ── build all cartela grids (stacked, no tabs) ── */
-function buildAllGameCartelas() {
-  const stack=document.getElementById('game-cartelas-stack'); stack.innerHTML='';
-  gameCartelaData.forEach((cd,idx)=>{
-    const wrap=document.createElement('div'); wrap.className='game-cartela-wrap';
-    wrap.innerHTML=`
-      <div class="game-cartela-title">Cartela #<em>${cd.id}</em></div>
-      <div class="game-cartela-hdr">
-        <div class="gc-col b">B</div><div class="gc-col i">I</div>
-        <div class="gc-col n">N</div><div class="gc-col g">G</div><div class="gc-col o">O</div>
-      </div>
-      <div class="game-cartela-grid" id="gcg-${idx}"></div>`;
-    stack.appendChild(wrap);
-    buildCartelaGrid(idx,cd);
-  });
-}
-
-function buildCartelaGrid(idx,cd) {
-  const grid=document.getElementById('gcg-'+idx); grid.innerHTML='';
-  cd.grid.forEach(row=>row.forEach(val=>{
-    const cell=document.createElement('div');
-    if(val==='FREE') { cell.className='gc-cell free'; cell.textContent='⭐'; }
-    else {
-      cell.className='gc-cell'; cell.textContent=val;
-      applyCartelaState(cell,val,cd);
-      cell.addEventListener('click',()=>handleCartelaClick(idx,val,cell,cd));
+/* ── Event Listeners ── */
+document.getElementById('bingo-btn')?.addEventListener('click', () => {
+    if (gameCartelaData.some(cd => checkBingo(cd))) {
+        triggerBingo();
+        return;
     }
-    grid.appendChild(cell);
-  }));
-}
-
-function applyCartelaState(cell,val,cd) {
-  cell.classList.remove('matched','manually-marked');
-  if(cd.matched.has(val) && !cd.manualDesel.has(val)) cell.classList.add('matched');
-  else if(!cd.matched.has(val) && cd.manualDesel.has(val)) cell.classList.add('manually-marked');
-}
-
-function handleCartelaClick(idx,val,cell,cd) {
-  if(cd.matched.has(val) && !cd.manualDesel.has(val)) {
-    cd.manualDesel.add(val); cell.classList.remove('matched');
-  } else if(cd.manualDesel.has(val)) {
-    cd.manualDesel.delete(val);
-    if(cd.matched.has(val)) cell.classList.add('matched');
-  } else if(!cd.matched.has(val)) {
-    cd.manualDesel.delete(val); cell.classList.add('manually-marked');
-  }
-}
-
-/* ── countdown ── */
-function resetBingoGame() {
-  gameCallCount=0; gameOver=false; gameSecondsLeft=CALL_INTERVAL_SEC;
-  document.getElementById('gs-call').textContent='0';
-  document.getElementById('call-ball-text').textContent='—';
-  document.getElementById('g-cd-fill').style.width='100%';
-  document.getElementById('g-cd-num').textContent=CALL_INTERVAL_SEC;
-  document.getElementById('g-cd-fill').classList.remove('urgent');
-  document.getElementById('bingo-btn').classList.remove('winner');
-  gameNumberPool.length=0;
-  for(let i=1;i<=75;i++) gameNumberPool.push(i);
-  gameCartelaData.forEach(cd=>{cd.matched.clear();cd.manualDesel.clear();});
-}
-
-function startBingoGame() {
-  gameCountdownTimer=setInterval(tickGameCountdown,1000);
-  gameInterval=setInterval(callNumber,CALL_INTERVAL_SEC*1000);
-  gameSecondsLeft=CALL_INTERVAL_SEC; updateGameCountdown();
-}
-function stopBingoGame() { clearInterval(gameInterval); clearInterval(gameCountdownTimer); gameInterval=null; gameCountdownTimer=null; }
-
-function tickGameCountdown() {
-  if(gameOver) return;
-  gameSecondsLeft=Math.max(0,gameSecondsLeft-1);
-  updateGameCountdown();
-}
-function updateGameCountdown() {
-  const fill=document.getElementById('g-cd-fill'), num=document.getElementById('g-cd-num');
-  if(fill) fill.style.width=(gameSecondsLeft/CALL_INTERVAL_SEC*100)+'%';
-  if(num)  num.textContent=gameSecondsLeft;
-  if(fill) fill.classList.toggle('urgent',gameSecondsLeft<=2);
-}
-function resetCallCountdown() {
-  clearInterval(gameCountdownTimer);
-  gameSecondsLeft=CALL_INTERVAL_SEC; updateGameCountdown();
-  gameCountdownTimer=setInterval(tickGameCountdown,1000);
-}
-
-/* ── call number ── */
-function callNumber() {
-  if(gameNumberPool.length===0||gameOver){stopBingoGame();return;}
-  const idx=Math.floor(Math.random()*gameNumberPool.length);
-  const num=gameNumberPool.splice(idx,1)[0];
-  const col=getColLetter(num);
-
-  gameCallCount++;
-  document.getElementById('gs-call').textContent=gameCallCount;
-
-  // Ball pop
-  const ball=document.getElementById('call-ball');
-  ball.classList.remove('pop'); void ball.offsetWidth; ball.classList.add('pop');
-  document.getElementById('call-ball-text').textContent=col+num;
-
-  // Board
-  document.querySelectorAll('.board-cell.called-current').forEach(c=>{
-    c.classList.remove('called-current');
-    const n=parseInt(c.id.replace('bd-',''));
-    const onAny=gameCartelaData.some(cd=>cd.grid.flat().includes(n));
-    c.classList.add(onAny?'called-match':'called-prev');
-  });
-  const bc=document.getElementById('bd-'+num);
-  if(bc){bc.classList.remove('called-prev','called-match');bc.classList.add('called-current');}
-
-  // Auto-match on ALL cartelas + update DOM
-  let bingoFound=false;
-  gameCartelaData.forEach((cd,i)=>{
-    const onCard=cd.grid.flat().includes(num);
-    if(onCard && !cd.manualDesel.has(num)) {
-      cd.matched.add(num);
-      const grid=document.getElementById('gcg-'+i);
-      if(grid) grid.querySelectorAll('.gc-cell:not(.free)').forEach(cell=>{
-        if(parseInt(cell.textContent)===num){
-          cell.classList.remove('manually-marked'); cell.classList.add('matched');
-        }
-      });
-    }
-    if(!bingoFound && checkBingo(cd)) bingoFound=true;
-  });
-  if(bingoFound) triggerBingo();
-
-  resetCallCountdown();
-  if(soundEnabled) playCallTone();
-}
-
-/* ── bingo check ── */
-function isCellActive(cd,r,c) {
-  const v=cd.grid[r][c];
-  if(v==='FREE') return true;
-  return cd.matched.has(v)&&!cd.manualDesel.has(v);
-}
-function checkBingo(cd) {
-  for(let r=0;r<5;r++) if([0,1,2,3,4].every(c=>isCellActive(cd,r,c))) return true;
-  for(let c=0;c<5;c++) if([0,1,2,3,4].every(r=>isCellActive(cd,r,c))) return true;
-  if([0,1,2,3,4].every(i=>isCellActive(cd,i,i))) return true;
-  if([0,1,2,3,4].every(i=>isCellActive(cd,i,4-i))) return true;
-  return false;
-}
-function triggerBingo() {
-  gameOver=true; stopBingoGame();
-  document.getElementById('bingo-btn').classList.add('winner');
-  document.getElementById('win-overlay').classList.add('active');
-}
-
-/* ── BINGO button ── */
-document.getElementById('bingo-btn').addEventListener('click',()=>{
-  if(gameCartelaData.some(cd=>checkBingo(cd))) { triggerBingo(); return; }
-  const btn=document.getElementById('bingo-btn');
-  btn.style.transform='translateX(-6px)';
-  setTimeout(()=>btn.style.transform='translateX(6px)',80);
-  setTimeout(()=>btn.style.transform='translateX(-4px)',160);
-  setTimeout(()=>btn.style.transform='translateX(0)',240);
+    const btn = document.getElementById('bingo-btn');
+    btn.style.transform = 'translateX(-6px)';
+    setTimeout(() => btn.style.transform = 'translateX(6px)', 80);
+    setTimeout(() => btn.style.transform = 'translateX(-4px)', 160);
+    setTimeout(() => btn.style.transform = 'translateX(0)', 240);
 });
 
-document.getElementById('win-close').addEventListener('click',()=>{
-  document.getElementById('win-overlay').classList.remove('active');
-  leaveGame();
+document.getElementById('win-close')?.addEventListener('click', () => {
+    document.getElementById('win-overlay').classList.remove('active');
+    leaveGame();
 });
 
-/* ── sound ── */
-document.getElementById('sound-btn').addEventListener('click',()=>{
-  soundEnabled=!soundEnabled;
-  document.getElementById('sound-btn').classList.toggle('muted',!soundEnabled);
+document.getElementById('sound-btn')?.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    document.getElementById('sound-btn').classList.toggle('muted', !soundEnabled);
 });
+
 function playCallTone() {
-  try {
-    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
-    osc.connect(gain);gain.connect(audioCtx.destination);
-    osc.type='sine';
-    osc.frequency.setValueAtTime(660,audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880,audioCtx.currentTime+.12);
-    gain.gain.setValueAtTime(.18,audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.35);
-    osc.start(audioCtx.currentTime);osc.stop(audioCtx.currentTime+.36);
-  } catch(e){}
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.36);
+    } catch (e) { }
+}
+
+async function doRefresh() {
+    const icon = document.getElementById('ri');
+    icon.style.transition = 'transform .6s ease';
+    icon.style.transform = 'rotate(360deg)';
+    setTimeout(() => {
+        icon.style.transition = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }, 680);
+    
+    await apiCall('/api/refresh', 'POST', {});
+    await fetchGameRooms();
+    await updateBalanceFromAPI();
 }
 
 /* ═══════════════════════════════════════
    BOOT
 ═══════════════════════════════════════ */
-renderLobby();
-buildPoolGrid();
-setInterval(lobbyTick, 1000);
+async function boot() {
+    buildPoolGrid();
+    await fetchGameRooms();
+    await updateBalanceFromAPI();
+    startLobbyTimer();
+}
+boot();
 </script>
+
 </body>
 </html>
